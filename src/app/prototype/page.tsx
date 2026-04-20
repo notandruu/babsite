@@ -26,19 +26,6 @@ export default function PrototypePage() {
         <HashMatrix />
       </div>
 
-      {/* Minimal text bottom center */}
-      <div className="absolute bottom-10 left-0 right-0 z-10 flex flex-col items-center gap-3 pointer-events-none">
-        <p className="font-sans text-[11px] tracking-[0.22em] uppercase text-white/40">
-          Blockchain at Berkeley
-        </p>
-        <div className="flex items-center gap-6 pointer-events-auto">
-          <a href="#" className="font-sans text-[10px] tracking-[0.12em] uppercase text-white/25 hover:text-white/50 transition-colors">Departments</a>
-          <span className="text-white/15">·</span>
-          <a href="#" className="font-sans text-[10px] tracking-[0.12em] uppercase text-white/25 hover:text-white/50 transition-colors">Research</a>
-          <span className="text-white/15">·</span>
-          <a href="#" className="font-sans text-[10px] tracking-[0.12em] uppercase text-white/25 hover:text-white/50 transition-colors">Blog</a>
-        </div>
-      </div>
     </div>
   );
 }

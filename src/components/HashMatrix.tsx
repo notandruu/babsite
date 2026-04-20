@@ -49,10 +49,11 @@ export function HashMatrix() {
   const dimsRef = useRef({ cols: 0, rows: 0, charW: 0, charH: 0 });
   const frameRef = useRef(0);
   const threeRef = useRef<ThreeScene | null>(null);
-  const rotRef = useRef({ x: 0, y: 0 }); // current rotation
-  const autoYRef = useRef(0); // continuous auto-rotation angle
+  const rotRef = useRef({ x: 0, y: 0 });
+  const autoYRef = useRef(0);
   const dragRef = useRef({ down: false, lastX: 0, lastY: 0 });
   const spotRef = useRef({ x: -1, y: -1, active: false });
+  const textMaskRef = useRef<Uint8Array | null>(null);
 
   /* ── Build Three.js offscreen scene ── */
   const buildThree = useCallback((cols: number, rows: number, pixelAspect: number) => {
@@ -160,6 +161,41 @@ export function HashMatrix() {
       const lines: string[] = [];
       for (let r = 0; r < rows; r++) lines.push(buildLine(cols));
       linesRef.current = lines;
+
+      // Build emboss text mask after fonts are loaded
+      const buildMask = () => {
+      const maskCanvas = document.createElement("canvas");
+      maskCanvas.width = w;
+      maskCanvas.height = h;
+      const mctx = maskCanvas.getContext("2d")!;
+      mctx.fillStyle = "white";
+      mctx.textBaseline = "middle";
+
+      const lines3 = [
+        { text: "BLOCKCHAIN", x: w * 0.48, y: h * 0.18, maxW: w * 0.92, style: `bold 100px sans-serif` },
+        { text: "@",          x: w * 0.82, y: h * 0.50, maxW: w * 0.14, style: `italic 100px "Instrument Serif", serif` },
+        { text: "Berkeley",   x: w * 0.48, y: h * 0.82, maxW: w * 0.92, style: `italic 100px "Instrument Serif", serif` },
+      ];
+      for (const { text, x, y, maxW, style } of lines3) {
+        mctx.font = style;
+        const fs = Math.floor(100 * maxW / mctx.measureText(text).width);
+        mctx.font = style.replace("100px", `${fs}px`);
+        mctx.textAlign = "center";
+        mctx.fillText(text, x, y);
+      }
+
+      const maskPx = mctx.getImageData(0, 0, w, h).data;
+      const mask = new Uint8Array(cols * rows);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const px = Math.min(w - 1, Math.round((c + 0.5) * charW));
+          const py = Math.min(h - 1, Math.round((r + 0.5) * charH));
+          mask[r * cols + c] = maskPx[(py * w + px) * 4 + 3] > 20 ? 1 : 0;
+        }
+      }
+      textMaskRef.current = mask;
+      }; // end buildMask
+      document.fonts.ready.then(buildMask);
 
       // Rebuild Three scene at new grid size
       threeRef.current?.renderer.dispose();
@@ -278,7 +314,12 @@ export function HashMatrix() {
             const alpha = Math.min(1, 0.88 + brightness * 0.12 + hv * 0.05);
             ctx.fillStyle = `rgba(${rb},${gb},${bb},${alpha})`;
           } else {
-            continue; // no background text
+            const mask = textMaskRef.current;
+            const inText = mask ? mask[row * cols + col] === 1 : false;
+            const alpha = inText
+              ? Math.min(1, 0.18 + hv * 0.06)
+              : Math.min(1, 0.06 + hv * 0.06);
+            ctx.fillStyle = `rgba(255,255,255,${alpha})`;
           }
 
           ctx.fillText(ch, x, y);
