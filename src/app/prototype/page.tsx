@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function PrototypePage() {
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-[#0a0a0a] flex flex-col">
+    <div className="relative w-screen h-screen overflow-hidden bg-[#0a0a0a]">
       {/* Navbar */}
       <div className="absolute inset-x-0 top-0 z-20 px-[48px] pt-[27px]">
         <div className="flex items-center justify-between h-14">
@@ -21,28 +21,22 @@ export default function PrototypePage() {
         </div>
       </div>
 
-      {/* Logo — fills all space above CTA */}
-      <div className="relative flex-1 w-full">
+      {/* Full background hash matrix */}
+      <div className="absolute inset-0">
         <HashMatrix />
       </div>
 
-      {/* CTA */}
-      <div className="flex flex-col items-center gap-4 pb-10 pt-4 z-10">
-        <p className="font-sans text-[12px] tracking-[0.22em] uppercase text-white/60">
+      {/* Minimal text bottom center */}
+      <div className="absolute bottom-10 left-0 right-0 z-10 flex flex-col items-center gap-3 pointer-events-none">
+        <p className="font-sans text-[11px] tracking-[0.22em] uppercase text-white/40">
           Blockchain at Berkeley
         </p>
-        <div className="flex items-center gap-7">
-          <a href="#" className="font-sans text-[11px] tracking-[0.12em] uppercase text-white/35 hover:text-white/70 transition-colors">
-            Departments
-          </a>
-          <span className="text-white/15 text-[10px]">·</span>
-          <a href="#" className="font-sans text-[11px] tracking-[0.12em] uppercase text-white/35 hover:text-white/70 transition-colors">
-            Research
-          </a>
-          <span className="text-white/15 text-[10px]">·</span>
-          <a href="#" className="font-sans text-[11px] tracking-[0.12em] uppercase text-white/35 hover:text-white/70 transition-colors">
-            Blog
-          </a>
+        <div className="flex items-center gap-6 pointer-events-auto">
+          <a href="#" className="font-sans text-[10px] tracking-[0.12em] uppercase text-white/25 hover:text-white/50 transition-colors">Departments</a>
+          <span className="text-white/15">·</span>
+          <a href="#" className="font-sans text-[10px] tracking-[0.12em] uppercase text-white/25 hover:text-white/50 transition-colors">Research</a>
+          <span className="text-white/15">·</span>
+          <a href="#" className="font-sans text-[10px] tracking-[0.12em] uppercase text-white/25 hover:text-white/50 transition-colors">Blog</a>
         </div>
       </div>
     </div>

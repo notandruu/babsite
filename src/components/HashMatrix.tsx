@@ -50,11 +50,12 @@ export function HashMatrix() {
   const frameRef = useRef(0);
   const threeRef = useRef<ThreeScene | null>(null);
   const rotRef = useRef({ x: 0, y: 0 }); // current rotation
+  const autoYRef = useRef(0); // continuous auto-rotation angle
   const dragRef = useRef({ down: false, lastX: 0, lastY: 0 });
   const spotRef = useRef({ x: -1, y: -1, active: false });
 
   /* ── Build Three.js offscreen scene ── */
-  const buildThree = useCallback((cols: number, rows: number) => {
+  const buildThree = useCallback((cols: number, rows: number, pixelAspect: number) => {
     // Render at character-grid resolution — each pixel = one character cell
     const W = cols;
     const H = rows;
@@ -64,7 +65,8 @@ export function HashMatrix() {
     renderer.setClearColor(0x000000, 0);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 1000);
+    // Use real pixel aspect so logo proportions aren't distorted by non-square character cells
+    const camera = new THREE.PerspectiveCamera(55, pixelAspect, 0.1, 1000);
     camera.position.z = 19;
 
     // Lights — key, fill, rim for depth + shadow contrast
@@ -109,14 +111,14 @@ export function HashMatrix() {
 
       // Scale based on face dimensions (X width, Z becomes height after rotation)
       const faceDim = Math.max(size.x, size.z);
-      const targetSize = 20;
+      const targetSize = 14;
       const fitScale = targetSize / faceDim;
       model.scale.setScalar(fitScale);
 
       // Re-center after rotation + scale
       const box2 = new THREE.Box3().setFromObject(model);
       const center2 = box2.getCenter(new THREE.Vector3());
-      model.position.set(-center2.x, -center2.y, -center2.z);
+      model.position.set(-center2.x, -center2.y + 0.8, -center2.z);
 
       logoGroup.add(model);
     });
@@ -134,8 +136,8 @@ export function HashMatrix() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
-    const FONT_SIZE = 13;
-    const LINE_HEIGHT = 16;
+    const FONT_SIZE = 9;
+    const LINE_HEIGHT = 11;
 
     function resize() {
       const parent = canvas!.parentElement!;
@@ -161,13 +163,13 @@ export function HashMatrix() {
 
       // Rebuild Three scene at new grid size
       threeRef.current?.renderer.dispose();
-      threeRef.current = buildThree(cols, rows);
+      threeRef.current = buildThree(cols, rows, w / h);
     }
 
     resize();
     window.addEventListener("resize", resize);
 
-    /* ── Mouse events — listen on window so tilt works anywhere on page ── */
+    /* ── Mouse events ── */
     const onMove = (e: MouseEvent) => {
       spotRef.current = { x: e.clientX, y: e.clientY, active: true };
     };
@@ -176,34 +178,28 @@ export function HashMatrix() {
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseleave", onLeave);
 
-    const heat = new Float32Array(10000); // pre-alloc, resized implicitly
+    let heat = new Float32Array(0);
 
     function animate() {
       const { cols, rows, charW, charH } = dimsRef.current;
+      const needed = cols * rows;
+      if (heat.length < needed) heat = new Float32Array(needed);
       const lines = linesRef.current;
       const three = threeRef.current;
 
-      /* Rotate Three scene based on mouse hover position */
+      /* Rotate Three scene — pure cursor driven */
       if (three) {
         const spot = spotRef.current;
-        const cx = window.innerWidth / 2;
-        const cy = window.innerHeight / 2;
-        const RANGE = 320; // px radius around logo center that activates tilt
-        const dx = spot.x - cx;
-        const dy = spot.y - cy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (spot.active && dist < RANGE) {
-          const t = dist / RANGE; // 0 at center, 1 at edge
-          const targetY = (dx / RANGE) * 0.7;
-          const targetX = (dy / RANGE) * -0.45;
+        if (spot.active) {
+          const targetY = ((spot.x / window.innerWidth) - 0.5) * 1.2;
+          const targetX = ((spot.y / window.innerHeight) - 0.5) * -0.6;
           rotRef.current.y += (targetY - rotRef.current.y) * 0.06;
           rotRef.current.x += (targetX - rotRef.current.x) * 0.06;
-          void t;
         } else {
-          // Ease back to center outside range
           rotRef.current.y += (0 - rotRef.current.y) * 0.03;
           rotRef.current.x += (0 - rotRef.current.x) * 0.03;
         }
+
         three.logoGroup.rotation.y = rotRef.current.y;
         three.logoGroup.rotation.x = rotRef.current.x;
         three.renderer.render(three.scene, three.camera);
@@ -222,11 +218,10 @@ export function HashMatrix() {
           const ch = lines[r].split("");
           ch[c] = HEX[Math.floor(Math.random() * 16)];
           lines[r] = ch.join("");
-          const idx = r * cols + c;
-          if (idx < heat.length) heat[idx] = 1.0;
+          heat[r * cols + c] = 1.0;
         }
       }
-      for (let i = 0; i < cols * rows && i < heat.length; i++) {
+      for (let i = 0; i < cols * rows; i++) {
         if (heat[i] > 0) heat[i] = Math.max(0, heat[i] - 0.015);
       }
 
@@ -240,7 +235,8 @@ export function HashMatrix() {
 
       /* Draw */
       const parent = canvas!.parentElement!;
-      ctx.clearRect(0, 0, parent.clientWidth, parent.clientHeight);
+      ctx.fillStyle = "#0a0a0a";
+      ctx.fillRect(0, 0, parent.clientWidth, parent.clientHeight);
       ctx.font = `${FONT_SIZE}px "Courier New", monospace`;
       ctx.textBaseline = "top";
 
@@ -282,7 +278,7 @@ export function HashMatrix() {
             const alpha = Math.min(1, 0.88 + brightness * 0.12 + hv * 0.05);
             ctx.fillStyle = `rgba(${rb},${gb},${bb},${alpha})`;
           } else {
-            continue; // no background matrix
+            continue; // no background text
           }
 
           ctx.fillText(ch, x, y);
