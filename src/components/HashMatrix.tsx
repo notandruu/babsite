@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
@@ -43,7 +43,7 @@ interface ThreeScene {
   readCtx: CanvasRenderingContext2D;
 }
 
-export function HashMatrix() {
+export function HashMatrix({ scrollProgressRef }: { scrollProgressRef?: MutableRefObject<number> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const linesRef = useRef<string[]>([]);
   const dimsRef = useRef({ cols: 0, rows: 0, charW: 0, charH: 0 });
@@ -54,6 +54,7 @@ export function HashMatrix() {
   const dragRef = useRef({ down: false, lastX: 0, lastY: 0 });
   const spotRef = useRef({ x: -1, y: -1, active: false });
   const textMaskRef = useRef<Uint8Array | null>(null);
+  const spSmoothRef = useRef(0); // internally lerped scroll progress
 
   /* ── Build Three.js offscreen scene ── */
   const buildThree = useCallback((cols: number, rows: number, pixelAspect: number) => {
@@ -112,14 +113,14 @@ export function HashMatrix() {
 
       // Scale based on face dimensions (X width, Z becomes height after rotation)
       const faceDim = Math.max(size.x, size.z);
-      const targetSize = 14;
+      const targetSize = 13;
       const fitScale = targetSize / faceDim;
       model.scale.setScalar(fitScale);
 
       // Re-center after rotation + scale
       const box2 = new THREE.Box3().setFromObject(model);
       const center2 = box2.getCenter(new THREE.Vector3());
-      model.position.set(-center2.x, -center2.y + 0.8, -center2.z);
+      model.position.set(-center2.x, -center2.y + 0.5, -center2.z);
 
       logoGroup.add(model);
     });
@@ -132,6 +133,7 @@ export function HashMatrix() {
 
     return { renderer, scene, camera, logoGroup, readCanvas, readCtx };
   }, []);
+
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -172,9 +174,9 @@ export function HashMatrix() {
       mctx.textBaseline = "middle";
 
       const lines3 = [
-        { text: "BLOCKCHAIN", x: w * 0.48, y: h * 0.18, maxW: w * 0.92, style: `bold 100px sans-serif` },
-        { text: "@",          x: w * 0.82, y: h * 0.50, maxW: w * 0.14, style: `italic 100px "Instrument Serif", serif` },
-        { text: "Berkeley",   x: w * 0.48, y: h * 0.82, maxW: w * 0.92, style: `italic 100px "Instrument Serif", serif` },
+        { text: "BLOCKCHAIN", x: w * 0.5, y: h * 0.72, maxW: w * 0.80, style: `bold 100px sans-serif` },
+        { text: "@",          x: w * 0.5, y: h * 0.82, maxW: w * 0.10, style: `italic 100px "Instrument Serif", serif` },
+        { text: "Berkeley",   x: w * 0.5, y: h * 0.91, maxW: w * 0.70, style: `italic 100px "Instrument Serif", serif` },
       ];
       for (const { text, x, y, maxW, style } of lines3) {
         mctx.font = style;
@@ -222,6 +224,30 @@ export function HashMatrix() {
       if (heat.length < needed) heat = new Float32Array(needed);
       const lines = linesRef.current;
       const three = threeRef.current;
+
+      // Internally smooth sp so snap momentum doesn't feel jarring
+      const spTarget = scrollProgressRef?.current ?? 0;
+      spSmoothRef.current += (spTarget - spSmoothRef.current) * 0.06;
+      const sp = spSmoothRef.current;
+      // Phase 1: 0→0.5 = camera zoom through logo + matrix fade in
+      // Phase 2: 0.5→1 = SVG burns into matrix below navbar
+      const phase1 = Math.min(1, sp / 0.5);
+      const phase2 = Math.max(0, Math.min(1, (sp - 0.5) / 0.5));
+
+      /* Camera zooms into center of logo, logo fades as camera gets close */
+      if (three) {
+        const targetZ = 19 - phase1 * 22; // 19 → -3, zooms through
+        three.camera.position.z += (targetZ - three.camera.position.z) * 0.055;
+        three.logoGroup.position.x += (0 - three.logoGroup.position.x) * 0.055;
+        three.logoGroup.position.y += (0 - three.logoGroup.position.y) * 0.055;
+        three.logoGroup.scale.setScalar(
+          three.logoGroup.scale.x + (1 - three.logoGroup.scale.x) * 0.055
+        );
+      }
+
+      /* Logo fades out as camera zooms in close */
+      const logoAlpha = Math.max(0, 1 - Math.max(0, (phase1 - 0.3) / 0.6));
+
 
       /* Rotate Three scene — pure cursor driven */
       if (three) {
@@ -271,8 +297,33 @@ export function HashMatrix() {
 
       /* Draw */
       const parent = canvas!.parentElement!;
+      const pw = parent.clientWidth;
+      const ph = parent.clientHeight;
       ctx.fillStyle = "#0a0a0a";
-      ctx.fillRect(0, 0, parent.clientWidth, parent.clientHeight);
+      ctx.fillRect(0, 0, pw, ph);
+
+      /* Vertical grid lines — fade out as matrix fades in */
+      const lineOpacity = Math.max(0, 1 - phase1 * 2.5) * 0.07;
+      if (lineOpacity > 0.002) {
+        ctx.save();
+        ctx.strokeStyle = `rgba(255,255,255,${lineOpacity})`;
+        ctx.lineWidth = 1;
+        const xPositions = [
+          48,
+          pw * 0.25 + 12,
+          pw * 0.5,
+          pw * 0.75 - 12,
+          pw - 48,
+        ];
+        for (const x of xPositions) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, ph);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
       ctx.font = `${FONT_SIZE}px "Courier New", monospace`;
       ctx.textBaseline = "top";
 
@@ -304,21 +355,19 @@ export function HashMatrix() {
             if (d < 110) spotlight = (1 - d / 110) * 0.35;
           }
 
-          if (a3 > 20) {
-            /* Inside 3D logo — boost sampled colors so model parts are vivid */
+          if (a3 > 20 && logoAlpha > 0.01) {
+            /* Inside 3D logo — fades out as camera zooms through */
             const boost = 1.8;
             const rb = Math.min(255, Math.round(r3 * boost));
             const gb = Math.min(255, Math.round(g3 * boost));
             const bb = Math.min(255, Math.round(b3 * boost));
             const brightness = (rb + gb + bb) / (3 * 255);
-            const alpha = Math.min(1, 0.88 + brightness * 0.12 + hv * 0.05);
+            const alpha = Math.min(1, (0.88 + brightness * 0.12 + hv * 0.05) * logoAlpha);
             ctx.fillStyle = `rgba(${rb},${gb},${bb},${alpha})`;
           } else {
-            const mask = textMaskRef.current;
-            const inText = mask ? mask[row * cols + col] === 1 : false;
-            const alpha = inText
-              ? Math.min(1, 0.18 + hv * 0.06)
-              : Math.min(1, 0.06 + hv * 0.06);
+            /* Background matrix — fades in during phase 1 */
+            if (phase1 < 0.1) continue;
+            const alpha = Math.min(1, phase1 * (0.06 + hv * 0.08));
             ctx.fillStyle = `rgba(255,255,255,${alpha})`;
           }
 
