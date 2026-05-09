@@ -147,9 +147,9 @@ export default function PrototypePage() {
         <div className="flex items-center justify-between h-14">
           <Logo />
           <div className="hidden md:flex items-center gap-8 ml-auto">
-            <a href="#" className="font-sans text-[13px] tracking-widest text-white/80 hover:text-white transition-colors duration-200">ABOUT</a>
-            <a href="#" className="font-sans text-[13px] tracking-widest text-white/80 hover:text-white transition-colors duration-200">DEPARTMENTS</a>
-            <a href="#" className="font-sans text-[13px] tracking-widest text-white/80 hover:text-white transition-colors duration-200">BLOG</a>
+            <a href="/about" className="font-sans text-[13px] tracking-widest text-white/80 hover:text-white transition-colors duration-200">ABOUT</a>
+            <a href="/work" className="font-sans text-[13px] tracking-widest text-white/80 hover:text-white transition-colors duration-200">WORK</a>
+            <a href="/courses" className="font-sans text-[13px] tracking-widest text-white/80 hover:text-white transition-colors duration-200">COURSES</a>
             <a href="#" className="font-sans text-[13px] tracking-widest text-[#FECB33] hover:text-white transition-colors duration-200">APPLY →</a>
           </div>
         </div>
