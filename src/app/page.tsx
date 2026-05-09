@@ -25,6 +25,7 @@ const DEPARTMENTS = [
 export default function PrototypePage() {
   const scrollProgressRef = useRef(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const snapResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const [ready, setReady] = useState(false);
   const [s3Entered, setS3Entered] = useState(false);
@@ -101,16 +102,16 @@ export default function PrototypePage() {
   const s2out = ss(Math.min(1, Math.max(0, (sp - 1.5)  / 0.5)));
   const s2 = s2in * (1 - s2out);
 
-  // Clients section — fades in 1.5→2.0, fades out 3.5→4.0
+  // Clients section — fades in 1.5→2.0, fades out 3.7→4.0
   const s3Raw = Math.min(1, Math.max(0, (sp - 1.5) / 0.5));
-  const s3out = ss(Math.min(1, Math.max(0, (sp - 3.5) / 0.5)));
+  const s3out = ss(Math.min(1, Math.max(0, (sp - 3.7) / 0.3)));
   const s3 = ss(s3Raw) * (1 - s3out);
 
   // Marquee scroll progress within clients section (sp 2→4, full 200vh)
   const s3p = Math.min(1, Math.max(0, (sp - 2) / 2));
 
-  // Departments section — fades in 3.5→4.0
-  const sDept = ss(Math.min(1, Math.max(0, (sp - 3.5) / 0.5)));
+  // Departments section — fades in 3.7→4.0
+  const sDept = ss(Math.min(1, Math.max(0, (sp - 3.7) / 0.3)));
 
   // Dark overlay — reaches 1.0 to fully bury the campanile
   const overlayOp = ss(Math.min(1, Math.max(0, (sp - 1.05) / 0.5))); // 1.05→1.55
@@ -319,9 +320,17 @@ export default function PrototypePage() {
       <div
         className="fixed pointer-events-auto"
         onWheel={(e) => {
-          if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollTop += e.deltaY;
-          }
+          const el = scrollContainerRef.current;
+          if (!el) return;
+          // Mandatory snap fights tiny scrollTop mutations and traps the user
+          // at the departments snap point. Disable snap while the wheel is
+          // driving scroll, then re-enable once it settles so we still rest on a section.
+          el.style.scrollSnapType = "none";
+          el.scrollTop += e.deltaY;
+          if (snapResetTimer.current) clearTimeout(snapResetTimer.current);
+          snapResetTimer.current = setTimeout(() => {
+            el.style.scrollSnapType = "y mandatory";
+          }, 140);
         }}
         style={{
           left: 48,
@@ -423,7 +432,7 @@ export default function PrototypePage() {
         </div>
       </div>
 
-      {/* Snap scroll container — 4 sections (3 × h-screen + 1 × 200vh for clients scroll) */}
+      {/* Snap scroll container — 5 sections (clients split into 2 × h-screen for an intermediate snap point) */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
@@ -432,7 +441,8 @@ export default function PrototypePage() {
       >
         <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
         <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
-        <section className="pointer-events-auto" style={{ height: "200vh", scrollSnapAlign: "start" }} />
+        <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
+        <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
         <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
       </div>
     </div>
