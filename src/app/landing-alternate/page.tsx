@@ -41,18 +41,16 @@ export default function LandingAlternatePage() {
   return (
     <div className="bg-[#0a0a0a] text-white min-h-screen overflow-x-hidden">
 
-      {/* Hero + Header */}
-      <div className="relative overflow-hidden" style={{ minHeight: "clamp(380px, 50vw, 560px)" }}>
+      <PageNav />
+
+      {/* Hero */}
+      <div className="relative overflow-hidden" style={{ minHeight: "clamp(280px, 40vw, 460px)" }}>
         <div className="absolute inset-0 bg-gradient-to-b from-black via-black/60 to-[#0a0a0a]/80" />
         <div
           className="absolute inset-0"
           style={{ background: "radial-gradient(ellipse 80% 60% at 60% 40%, rgba(254,203,51,0.04) 0%, transparent 70%)" }}
         />
         <div className="absolute inset-0 bg-[url('/hero-bg.jpg')] bg-cover bg-center opacity-40" />
-
-        <div className="relative z-10">
-          <PageNav />
-        </div>
 
         <div className="relative z-10 px-[48px] pt-10 sm:pt-14 pb-10 sm:pb-[52px] flex flex-col gap-4">
           <span className="font-sans text-white text-[10px] tracking-[0.28em] uppercase font-light">

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Logo } from "./Logo";
 import { ArrowIcon } from "./ArrowIcon";
 
@@ -12,15 +13,10 @@ export function Navbar() {
 
         {/* Nav links - centered, hidden on small screens */}
         <div className="hidden md:flex items-center justify-center gap-5 font-sans text-base tracking-[-0.8px] text-white absolute left-1/2 -translate-x-1/2">
-          <span className="cursor-pointer hover:text-gold transition-colors">
-            ABOUT
-          </span>
-          <span className="cursor-pointer hover:text-gold transition-colors">
-            DEPARTMENTS
-          </span>
-          <span className="cursor-pointer hover:text-gold transition-colors">
-            BLOG
-          </span>
+          <Link href="/about" className="hover:text-gold transition-colors">ABOUT</Link>
+          <Link href="/work" className="hover:text-gold transition-colors">WORK</Link>
+          <Link href="/courses" className="hover:text-gold transition-colors">COURSES</Link>
+          <Link href="/blog" className="hover:text-gold transition-colors">BLOG</Link>
         </div>
 
         {/* CTA */}
