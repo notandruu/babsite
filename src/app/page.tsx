@@ -18,6 +18,7 @@ export default function PrototypePage() {
   });
 
   const [sp, setSp] = useState(0);
+  const [spFull, setSpFull] = useState(0);
 
   const STATS = [
     { prefix: "",  target: 300, suffix: "+",  label: "Members" },
@@ -44,9 +45,11 @@ export default function PrototypePage() {
   const handleScroll = () => {
     const el = scrollContainerRef.current;
     if (!el) return;
-    const progress = Math.min(1, el.scrollTop / window.innerHeight);
+    const full = el.scrollTop / window.innerHeight;
+    const progress = Math.min(1, full);
     scrollProgressRef.current = progress;
     setSp(progress);
+    setSpFull(full);
     setScrolled(el.scrollTop > 20);
     if (progress > 0.8 && !countStartedRef.current) {
       countStartedRef.current = true;
@@ -70,10 +73,19 @@ export default function PrototypePage() {
         ))}
       </div>
 
-      {/* Hash matrix canvas */}
-      <div className="fixed inset-0 z-[1]" style={fadeUp(200, 0)}>
-        <HashMatrix scrollProgressRef={scrollProgressRef} />
-      </div>
+      {/* Hash matrix canvas — fades out when leaving section 2 into the departments section */}
+      {(() => {
+        const hashFade = 1 - Math.min(1, Math.max(0, (spFull - 1.4) / 0.4));
+        const baseFade = fadeUp(200, 0);
+        return (
+          <div
+            className="fixed inset-0 z-[1]"
+            style={{ ...baseFade, opacity: (baseFade.opacity ?? 1) * hashFade }}
+          >
+            <HashMatrix scrollProgressRef={scrollProgressRef} />
+          </div>
+        );
+      })()}
 
       {/* Navbar */}
       <div
@@ -139,7 +151,8 @@ export default function PrototypePage() {
 
       {/* Second section content — fades in as scroll reaches section 2 */}
       {(() => {
-        const s2 = Math.max(0, (sp - 0.65) / 0.35);
+        const s3 = Math.min(1, Math.max(0, (spFull - 1.5) / 0.4));
+        const s2 = Math.min(1, Math.max(0, (sp - 0.65) / 0.35)) * (1 - s3);
         return (
           <div
             className="fixed inset-0 z-10 pointer-events-none"
@@ -210,6 +223,78 @@ export default function PrototypePage() {
         );
       })()}
 
+      {/* Third section — Departments */}
+      {(() => {
+        const s3 = Math.min(1, Math.max(0, (spFull - 1.5) / 0.4));
+        const departments = [
+          { label: "Consulting",  description: "Strategic Web3 advisory for protocols, funds, and enterprises.", color: "#D6BA67" },
+          { label: "Design",      description: "Branding, product, and visual systems for crypto-native teams.",  color: "#DCB748" },
+          { label: "Education",   description: "Decals, workshops, and curriculum bringing students into Web3.",  color: "#DCB748" },
+          { label: "Research",    description: "Original research on protocols, markets, and infrastructure.",    color: "#DCB748" },
+        ];
+        return (
+          <div
+            className="fixed inset-0 z-10 pointer-events-none"
+            style={{
+              opacity: s3,
+              transform: `translateY(${(1 - s3) * 32}px)`,
+              transition: "none",
+            }}
+          >
+            {/* Section label */}
+            <div className="absolute" style={{ top: 116, left: 48, right: 48 }}>
+              <p className="text-white/40 text-[11px] tracking-[0.2em] uppercase mb-2" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>
+                Departments
+              </p>
+              <p className="text-white text-3xl leading-snug" style={{ fontFamily: "'Instrument Sans', sans-serif", letterSpacing: "-0.03em", maxWidth: 520 }}>
+                Four teams working at the intersection of blockchain, design, education, and research.
+              </p>
+            </div>
+
+          </div>
+        );
+      })()}
+
+      {/* Cards grid — separate fixed layer at higher z so hover events reach the cards.
+          Wheel forwards to the snap scroll container so scrolling past works. */}
+      {(() => {
+        const s3 = Math.min(1, Math.max(0, (spFull - 1.5) / 0.4));
+        const departments = [
+          { label: "Consulting",  description: "Strategic Web3 advisory for protocols, funds, and enterprises.", color: "#D6BA67" },
+          { label: "Design",      description: "Branding, product, and visual systems for crypto-native teams.",  color: "#DCB748" },
+          { label: "Education",   description: "Decals, workshops, and curriculum bringing students into Web3.",  color: "#DCB748" },
+          { label: "Research",    description: "Original research on protocols, markets, and infrastructure.",    color: "#DCB748" },
+        ];
+        return (
+          <div
+            className="fixed pointer-events-auto"
+            onWheel={(e) => {
+              if (scrollContainerRef.current) {
+                scrollContainerRef.current.scrollTop += e.deltaY;
+              }
+            }}
+            style={{
+              left: 48,
+              right: 48,
+              bottom: 64,
+              top: "34vh",
+              zIndex: 25,
+              opacity: s3,
+              transform: `translateY(${(1 - s3) * 32}px)`,
+              display: "grid",
+              gridTemplateColumns: "calc(25vw - 36px) calc(25vw - 12px) calc(25vw - 12px) calc(25vw - 36px)",
+              borderTop: "1px solid rgba(255,255,255,0.07)",
+              borderBottom: "1px solid rgba(255,255,255,0.07)",
+              pointerEvents: s3 > 0.5 ? "auto" : "none",
+            }}
+          >
+            {departments.map((d) => (
+              <DepartmentCard key={d.label} label={d.label} description={d.description} color={d.color} />
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Snap scroll container */}
       <div
         ref={scrollContainerRef}
@@ -219,6 +304,149 @@ export default function PrototypePage() {
       >
         <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
         <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
+        <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
+      </div>
+    </div>
+  );
+}
+
+function DepartmentCard({ label, description, color }: { label: string; description: string; color: string }) {
+  // Solid grays, lightest in the back, darkest in the front.
+  const folderFill = color;
+  // All papers tilt in the same (counter-clockwise) direction; back is the
+  // tallest and least tilted, front sits lowest and is rotated the most.
+  const papers = [
+    { fill: "#dcdcdc", rot:  -3, dx:   8, dy: -22, z: 1 }, // back  — lightest, least tilt
+    { fill: "#a8a8a8", rot:  -9, dx:   0, dy:   0, z: 2 }, // middle
+    { fill: "#7a7a7a", rot: -15, dx:  -5, dy:  22, z: 3 }, // front — darkest, most tilt
+  ];
+
+  // Stagger amounts: lift on card hover, plus extra lift/rotation when the
+  // matching hover-zone for that paper is active. Each paper also rotates a
+  // touch in a different direction for a subtle fan-out feel.
+  const lift = [10, 16, 22];      // px upward, by index (back, middle, front)
+  const hoverRot = [4, -3, 5];    // deg, alternating directions
+  const delay = [0, 60, 120];     // ms cascade delay
+
+  const [cardHover, setCardHover] = useState(false);
+  const [paperHover, setPaperHover] = useState<number | null>(null);
+
+  return (
+    <div
+      onMouseEnter={() => setCardHover(true)}
+      onMouseLeave={() => { setCardHover(false); setPaperHover(null); }}
+      style={{
+        position: "relative",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-end",
+        padding: "0 0 0 24%",
+      }}
+    >
+      {/* Three equal-height hover zones above the folder — each picks the
+          back / middle / front paper for the focused lift. */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 280, // height of the folder front below
+          display: "grid",
+          gridTemplateRows: "repeat(3, 1fr)",
+          zIndex: 10,
+        }}
+      >
+        {[0, 1, 2].map((i) => (
+          <div key={i} onMouseEnter={() => setPaperHover(i)} />
+        ))}
+      </div>
+
+      {/* Papers — 3 solid sheets stacked, rotated, sticking up out of the folder */}
+      <div
+        style={{
+          position: "relative",
+          width: "84%",
+          height: 200,
+          marginLeft: "auto",
+          marginRight: "auto",
+          marginBottom: -110,
+          zIndex: 1,
+        }}
+      >
+        {papers.map((p, i) => {
+          const isFocused = paperHover === i;
+          const ty = (cardHover ? lift[i] : 0) + (isFocused ? 14 : 0);
+          const rot = (cardHover ? hoverRot[i] : 0) + (isFocused ? hoverRot[i] * 0.6 : 0);
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                inset: 0,
+                zIndex: p.z,
+                transform: `translateY(${-ty}px) rotate(${rot}deg)`,
+                transition: "transform 500ms cubic-bezier(0.16, 1, 0.3, 1)",
+                transitionDelay: `${cardHover ? delay[i] : 0}ms`,
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  transform: `translate(${p.dx}px, ${p.dy}px) rotate(${p.rot}deg)`,
+                  background: p.fill,
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Folder front — solid, with a tab notch on the upper-left edge */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: 280,
+          background: folderFill,
+          clipPath: "polygon(0% 8%, 54% 8%, 60% 0%, 100% 0%, 100% 100%, 0% 100%)",
+          zIndex: 2,
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            left: 22,
+            right: 22,
+            bottom: 22,
+            color: "#111",
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "'Instrument Sans', sans-serif",
+              fontSize: 22,
+              letterSpacing: "-0.03em",
+              lineHeight: 1,
+              marginBottom: 8,
+            }}
+          >
+            {label}
+          </p>
+          <p
+            style={{
+              fontFamily: "'Instrument Sans', sans-serif",
+              fontSize: 12.5,
+              lineHeight: 1.45,
+              color: "rgba(17,17,17,0.62)",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {description}
+          </p>
+        </div>
       </div>
     </div>
   );
