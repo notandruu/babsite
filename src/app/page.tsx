@@ -300,7 +300,7 @@ export default function PrototypePage() {
             style={{
               fontFamily: "'Instrument Sans', sans-serif",
               letterSpacing: "-0.03em",
-              maxWidth: 520,
+              maxWidth: 620,
               opacity: sDeptEntered ? 1 : 0,
               transform: sDeptEntered ? "translateY(0px)" : "translateY(12px)",
               transition: "opacity 0.9s cubic-bezier(0.16,1,0.3,1) 80ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) 80ms",
@@ -326,7 +326,7 @@ export default function PrototypePage() {
         <div
           className="absolute"
           style={{
-            top: 116,
+            top: "calc(17vh - 60px)",
             right: 48,
             width: "calc(50% - 72px)",
             display: "grid",
