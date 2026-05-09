@@ -31,6 +31,7 @@ export default function PrototypePage() {
 
   // sp goes 0→3 across 4 sections
   const [sp, setSp] = useState(0);
+  const [spFull, setSpFull] = useState(0);
 
   const STATS = [
     { prefix: "",  target: 300, suffix: "+",  label: "Members" },
@@ -57,6 +58,12 @@ export default function PrototypePage() {
   const handleScroll = () => {
     const el = scrollContainerRef.current;
     if (!el) return;
+    const full = el.scrollTop / window.innerHeight;
+    const progress = Math.min(1, full);
+    scrollProgressRef.current = progress;
+    setSp(progress);
+    setSpFull(full);
+    setScrolled(el.scrollTop > 20);
     const progress = el.scrollTop / window.innerHeight; // 0–3 across 4 sections
     scrollProgressRef.current = Math.min(1, progress);  // morph uses 0–1
     setSp(progress);
@@ -101,10 +108,19 @@ export default function PrototypePage() {
         ))}
       </div>
 
-      {/* Hash matrix canvas */}
-      <div className="fixed inset-0 z-[1]" style={{ ...fadeUp(200, 0), opacity: ready ? Math.max(0, 1 - Math.max(0, sp - 1.1) / 0.55) : 0 }}>
-        <HashMatrix scrollProgressRef={scrollProgressRef} />
-      </div>
+      {/* Hash matrix canvas — fades out when leaving section 2 into the departments section */}
+      {(() => {
+        const hashFade = 1 - Math.min(1, Math.max(0, (spFull - 1.4) / 0.4));
+        const baseFade = fadeUp(200, 0);
+        return (
+          <div
+            className="fixed inset-0 z-[1]"
+            style={{ ...baseFade, opacity: (baseFade.opacity ?? 1) * hashFade }}
+          >
+            <HashMatrix scrollProgressRef={scrollProgressRef} />
+          </div>
+        );
+      })()}
 
       {/* Section 3 background overlay — darkens canvas as clients section appears */}
       <div
@@ -168,14 +184,24 @@ export default function PrototypePage() {
         </div>
       </div>
 
-      {/* Section 2 — campanile + about + stats */}
-      <div
-        className="fixed inset-0 z-10 pointer-events-none"
-        style={{ opacity: s2, transform: `translateY(${(1 - Math.min(1, s2)) * 32}px)`, transition: "none" }}
-      >
-        <div className="absolute" style={{ top: 200, left: 48, width: "calc(50% - 48px)" }}>
-          <p className="text-white/40 text-[11px] tracking-[0.2em] uppercase mb-2" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>
-            About
+
+      {/* Second section content — fades in as scroll reaches section 2 */}
+      {(() => {
+        const s3 = Math.min(1, Math.max(0, (spFull - 1.5) / 0.4));
+        const s2 = Math.min(1, Math.max(0, (sp - 0.65) / 0.35)) * (1 - s3);
+        return (
+          <div
+            className="fixed inset-0 z-10 pointer-events-none"
+            style={{
+              opacity: s2,
+              transform: `translateY(${(1 - s2) * 32}px)`,
+              transition: "none",
+            }}
+          >
+            {/* Description — left column */}
+            <div className="absolute" style={{ top: 200, left: 48, width: "calc(50% - 48px)" }}>
+              <p className="text-white/40 text-[11px] tracking-[0.2em] uppercase mb-2" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>
+                About
           </p>
           <p className="text-white text-3xl leading-snug" style={{ fontFamily: "'Instrument Sans', sans-serif", letterSpacing: "-0.03em", maxWidth: "520px" }}>
             The largest blockchain organization in academia, building the next generation of Web3 leaders through education, consulting, and cutting-edge research.
@@ -284,7 +310,79 @@ export default function PrototypePage() {
         </div>
       </div>
 
-      {/* Snap scroll container — 3 sections */}
+      {/* Third section — Departments */}
+      {(() => {
+        const s3 = Math.min(1, Math.max(0, (spFull - 1.5) / 0.4));
+        const departments = [
+          { label: "Consulting",  description: "Strategic Web3 advisory for protocols, funds, and enterprises.", color: "#D6B048", sticker: "/solidity-sticker.png" },
+          { label: "Design",      description: "Branding, product, and visual systems for crypto-native teams.",  color: "#DCB748", frontImage: "/brookwell.png", middleImage: "/bdax.png", backImage: "/simplifi.png", sticker: "/figma-sticker.png" },
+          { label: "Education",   description: "Decals, workshops, and curriculum bringing students into Web3.",  color: "#DCB748", sticker: "/x-sticker.png" },
+          { label: "Research",    description: "Original research on protocols, markets, and infrastructure.",    color: "#DCB748", sticker: "/hyperliquid-sticker.png" },
+        ];
+        return (
+          <div
+            className="fixed inset-0 z-10 pointer-events-none"
+            style={{
+              opacity: s3,
+              transform: `translateY(${(1 - s3) * 32}px)`,
+              transition: "none",
+            }}
+          >
+            {/* Section label */}
+            <div className="absolute" style={{ top: 116, left: 48, right: 48 }}>
+              <p className="text-white/40 text-[11px] tracking-[0.2em] uppercase mb-2" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>
+                Departments
+              </p>
+              <p className="text-white text-3xl leading-snug" style={{ fontFamily: "'Instrument Sans', sans-serif", letterSpacing: "-0.03em", maxWidth: 520 }}>
+                Four teams working at the intersection of blockchain, design, education, and research.
+              </p>
+            </div>
+
+          </div>
+        );
+      })()}
+
+      {/* Cards grid — separate fixed layer at higher z so hover events reach the cards.
+          Wheel forwards to the snap scroll container so scrolling past works. */}
+      {(() => {
+        const s3 = Math.min(1, Math.max(0, (spFull - 1.5) / 0.4));
+        const departments = [
+          { label: "Consulting",  description: "Strategic Web3 advisory for protocols, funds, and enterprises.", color: "#D6B048", sticker: "/solidity-sticker.png" },
+          { label: "Design",      description: "Branding, product, and visual systems for crypto-native teams.",  color: "#DCB748", frontImage: "/brookwell.png", middleImage: "/bdax.png", backImage: "/simplifi.png", sticker: "/figma-sticker.png" },
+          { label: "Education",   description: "Decals, workshops, and curriculum bringing students into Web3.",  color: "#DCB748", sticker: "/x-sticker.png" },
+          { label: "Research",    description: "Original research on protocols, markets, and infrastructure.",    color: "#DCB748", sticker: "/hyperliquid-sticker.png" },
+        ];
+        return (
+          <div
+            className="fixed pointer-events-auto"
+            onWheel={(e) => {
+              if (scrollContainerRef.current) {
+                scrollContainerRef.current.scrollTop += e.deltaY;
+              }
+            }}
+            style={{
+              left: 48,
+              right: 48,
+              bottom: 64,
+              top: "34vh",
+              zIndex: 25,
+              opacity: s3,
+              transform: `translateY(${(1 - s3) * 32}px)`,
+              display: "grid",
+              gridTemplateColumns: "calc(25vw - 36px) calc(25vw - 12px) calc(25vw - 12px) calc(25vw - 36px)",
+              borderTop: "1px solid rgba(255,255,255,0.07)",
+              borderBottom: "1px solid rgba(255,255,255,0.07)",
+              pointerEvents: s3 > 0.5 ? "auto" : "none",
+            }}
+          >
+            {departments.map((d) => (
+              <DepartmentCard key={d.label} label={d.label} description={d.description} color={d.color} frontImage={d.frontImage} middleImage={d.middleImage} backImage={d.backImage} sticker={d.sticker} />
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* Snap scroll container */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
@@ -293,7 +391,195 @@ export default function PrototypePage() {
       >
         <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
         <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
-        <section className="pointer-events-auto" style={{ height: "200vh", scrollSnapAlign: "start" }} />
+        <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
+      </div>
+    </div>
+  );
+}
+
+function DepartmentCard({ label, description, color, frontImage, middleImage, backImage, sticker }: { label: string; description: string; color: string; frontImage?: string; middleImage?: string; backImage?: string; sticker?: string }) {
+  const paperImages: (string | undefined)[] = [backImage, middleImage, frontImage];
+  // Solid grays, lightest in the back, darkest in the front.
+  const folderFill = color;
+  // All papers tilt in the same (counter-clockwise) direction; back is the
+  // tallest and least tilted, front sits lowest and is rotated the most.
+  const papers = [
+    { fill: "#dcdcdc", rot:  -3, dx:   8, dy: -22, z: 1 }, // back  — lightest, least tilt
+    { fill: "#a8a8a8", rot:  -9, dx:   0, dy:   0, z: 2 }, // middle
+    { fill: "#7a7a7a", rot: -15, dx:  -5, dy:  22, z: 3 }, // front — darkest, most tilt
+  ];
+
+  // Stagger amounts: lift on card hover, plus extra lift/rotation when the
+  // matching hover-zone for that paper is active. Each paper also rotates a
+  // touch in a different direction for a subtle fan-out feel.
+  const lift = [5, 8, 11];          // px upward, by index (back, middle, front)
+  const hoverRot = [2, -1.5, 2.5];  // deg, alternating directions
+  const delay = [0, 60, 120];     // ms cascade delay
+
+  const [cardHover, setCardHover] = useState(false);
+  const [paperHover, setPaperHover] = useState<number | null>(null);
+  const [pressedIdx, setPressedIdx] = useState<number | null>(null);
+  const [clickedIdx, setClickedIdx] = useState<number | null>(null);
+
+  return (
+    <div
+      onMouseEnter={() => setCardHover(true)}
+      onMouseLeave={() => {
+        setCardHover(false);
+        setPaperHover(null);
+        setPressedIdx(null);
+        setClickedIdx(null);
+      }}
+      style={{
+        position: "relative",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-end",
+        padding: "0 0 0 24%",
+      }}
+    >
+      {/* Three equal-height hover zones above the folder — each picks the
+          back / middle / front paper for the focused lift. */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 280, // height of the folder front below
+          display: "grid",
+          gridTemplateRows: "repeat(3, 1fr)",
+          zIndex: 10,
+        }}
+      >
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            onMouseEnter={() => setPaperHover(i)}
+            onMouseDown={() => setPressedIdx(i)}
+            onMouseUp={() => {
+              if (pressedIdx === i) setClickedIdx((prev) => (prev === i ? null : i));
+              setPressedIdx(null);
+            }}
+            style={{ cursor: "pointer" }}
+          />
+        ))}
+      </div>
+
+      {/* Papers — 3 solid sheets stacked, rotated, sticking up out of the folder */}
+      <div
+        style={{
+          position: "relative",
+          width: "84%",
+          height: 200,
+          marginLeft: "auto",
+          marginRight: "auto",
+          marginBottom: -110,
+          zIndex: 1,
+        }}
+      >
+        {papers.map((p, i) => {
+          const isFocused = paperHover === i;
+          const isClicked = clickedIdx === i;
+          const isPressed = pressedIdx === i;
+          const isOtherFocused = paperHover !== null && !isFocused;
+          const isOtherClicked = clickedIdx !== null && !isClicked;
+          const ty =
+            (cardHover ? lift[i] : 0) +
+            (isFocused ? 36 : 0) +
+            (isClicked ? 130 : 0) +
+            (isOtherFocused ? -6 : 0) +
+            (isOtherClicked ? -10 : 0);
+          const rot = (cardHover ? hoverRot[i] : 0) + (isFocused ? hoverRot[i] * 0.6 : 0);
+          const scale = isClicked ? 1 : isPressed ? 0.96 : 1;
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                inset: 0,
+                zIndex: p.z,
+                transform: `translateY(${-ty}px) rotate(${rot}deg) scale(${scale})`,
+                transition: "transform 500ms cubic-bezier(0.16, 1, 0.3, 1)",
+                transitionDelay: `${cardHover ? delay[i] : 0}ms`,
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  transform: `translate(${p.dx}px, ${p.dy}px) rotate(${p.rot}deg)`,
+                  background: paperImages[i] ? `url(${paperImages[i]}) center/cover no-repeat ${p.fill}` : p.fill,
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Sticker — small decorative badge on the folder, rotated slightly */}
+      {sticker && (
+        <img
+          src={sticker}
+          alt=""
+          style={{
+            position: "absolute",
+            right: 18,
+            bottom: 86,
+            width: 64,
+            height: "auto",
+            transform: "rotate(-12deg)",
+            zIndex: 4,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+
+      {/* Folder front — solid, with a tab notch on the upper-left edge */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: 280,
+          background: `linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 28%, rgba(0,0,0,0.10) 100%), ${folderFill}`,
+          boxShadow: "inset 0 -10px 20px rgba(0,0,0,0.18)",
+          clipPath: "polygon(0% 8%, 54% 8%, 60% 0%, 100% 0%, 100% 100%, 0% 100%)",
+          zIndex: 2,
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            left: 22,
+            right: 22,
+            bottom: 22,
+            color: "#111",
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "'Instrument Sans', sans-serif",
+              fontSize: 22,
+              letterSpacing: "-0.03em",
+              lineHeight: 1,
+              marginBottom: 8,
+            }}
+          >
+            {label}
+          </p>
+          <p
+            style={{
+              fontFamily: "'Instrument Sans', sans-serif",
+              fontSize: 12.5,
+              lineHeight: 1.45,
+              color: "rgba(17,17,17,0.62)",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {description}
+          </p>
+        </div>
       </div>
     </div>
   );
