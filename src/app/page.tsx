@@ -228,9 +228,9 @@ export default function PrototypePage() {
         const s3 = Math.min(1, Math.max(0, (spFull - 1.5) / 0.4));
         const departments = [
           { label: "Consulting",  description: "Strategic Web3 advisory for protocols, funds, and enterprises.", color: "#D6BA67" },
-          { label: "Design",      description: "Branding, product, and visual systems for crypto-native teams.",  color: "#DCB748" },
+          { label: "Design",      description: "Branding, product, and visual systems for crypto-native teams.",  color: "#DCB748", frontImage: "/brookwell.png", middleImage: "/bdax.png", backImage: "/simplifi.png", sticker: "/figma-sticker.png" },
           { label: "Education",   description: "Decals, workshops, and curriculum bringing students into Web3.",  color: "#DCB748" },
-          { label: "Research",    description: "Original research on protocols, markets, and infrastructure.",    color: "#DCB748" },
+          { label: "Research",    description: "Original research on protocols, markets, and infrastructure.",    color: "#DCB748", sticker: "/hyperliquid-sticker.png" },
         ];
         return (
           <div
@@ -261,9 +261,9 @@ export default function PrototypePage() {
         const s3 = Math.min(1, Math.max(0, (spFull - 1.5) / 0.4));
         const departments = [
           { label: "Consulting",  description: "Strategic Web3 advisory for protocols, funds, and enterprises.", color: "#D6BA67" },
-          { label: "Design",      description: "Branding, product, and visual systems for crypto-native teams.",  color: "#DCB748" },
+          { label: "Design",      description: "Branding, product, and visual systems for crypto-native teams.",  color: "#DCB748", frontImage: "/brookwell.png", middleImage: "/bdax.png", backImage: "/simplifi.png", sticker: "/figma-sticker.png" },
           { label: "Education",   description: "Decals, workshops, and curriculum bringing students into Web3.",  color: "#DCB748" },
-          { label: "Research",    description: "Original research on protocols, markets, and infrastructure.",    color: "#DCB748" },
+          { label: "Research",    description: "Original research on protocols, markets, and infrastructure.",    color: "#DCB748", sticker: "/hyperliquid-sticker.png" },
         ];
         return (
           <div
@@ -289,7 +289,7 @@ export default function PrototypePage() {
             }}
           >
             {departments.map((d) => (
-              <DepartmentCard key={d.label} label={d.label} description={d.description} color={d.color} />
+              <DepartmentCard key={d.label} label={d.label} description={d.description} color={d.color} frontImage={d.frontImage} middleImage={d.middleImage} backImage={d.backImage} sticker={d.sticker} />
             ))}
           </div>
         );
@@ -310,7 +310,8 @@ export default function PrototypePage() {
   );
 }
 
-function DepartmentCard({ label, description, color }: { label: string; description: string; color: string }) {
+function DepartmentCard({ label, description, color, frontImage, middleImage, backImage, sticker }: { label: string; description: string; color: string; frontImage?: string; middleImage?: string; backImage?: string; sticker?: string }) {
+  const paperImages: (string | undefined)[] = [backImage, middleImage, frontImage];
   // Solid grays, lightest in the back, darkest in the front.
   const folderFill = color;
   // All papers tilt in the same (counter-clockwise) direction; back is the
@@ -324,17 +325,24 @@ function DepartmentCard({ label, description, color }: { label: string; descript
   // Stagger amounts: lift on card hover, plus extra lift/rotation when the
   // matching hover-zone for that paper is active. Each paper also rotates a
   // touch in a different direction for a subtle fan-out feel.
-  const lift = [10, 16, 22];      // px upward, by index (back, middle, front)
-  const hoverRot = [4, -3, 5];    // deg, alternating directions
+  const lift = [5, 8, 11];          // px upward, by index (back, middle, front)
+  const hoverRot = [2, -1.5, 2.5];  // deg, alternating directions
   const delay = [0, 60, 120];     // ms cascade delay
 
   const [cardHover, setCardHover] = useState(false);
   const [paperHover, setPaperHover] = useState<number | null>(null);
+  const [pressedIdx, setPressedIdx] = useState<number | null>(null);
+  const [clickedIdx, setClickedIdx] = useState<number | null>(null);
 
   return (
     <div
       onMouseEnter={() => setCardHover(true)}
-      onMouseLeave={() => { setCardHover(false); setPaperHover(null); }}
+      onMouseLeave={() => {
+        setCardHover(false);
+        setPaperHover(null);
+        setPressedIdx(null);
+        setClickedIdx(null);
+      }}
       style={{
         position: "relative",
         height: "100%",
@@ -359,7 +367,16 @@ function DepartmentCard({ label, description, color }: { label: string; descript
         }}
       >
         {[0, 1, 2].map((i) => (
-          <div key={i} onMouseEnter={() => setPaperHover(i)} />
+          <div
+            key={i}
+            onMouseEnter={() => setPaperHover(i)}
+            onMouseDown={() => setPressedIdx(i)}
+            onMouseUp={() => {
+              if (pressedIdx === i) setClickedIdx((prev) => (prev === i ? null : i));
+              setPressedIdx(null);
+            }}
+            style={{ cursor: "pointer" }}
+          />
         ))}
       </div>
 
@@ -377,8 +394,18 @@ function DepartmentCard({ label, description, color }: { label: string; descript
       >
         {papers.map((p, i) => {
           const isFocused = paperHover === i;
-          const ty = (cardHover ? lift[i] : 0) + (isFocused ? 14 : 0);
+          const isClicked = clickedIdx === i;
+          const isPressed = pressedIdx === i;
+          const isOtherFocused = paperHover !== null && !isFocused;
+          const isOtherClicked = clickedIdx !== null && !isClicked;
+          const ty =
+            (cardHover ? lift[i] : 0) +
+            (isFocused ? 36 : 0) +
+            (isClicked ? 130 : 0) +
+            (isOtherFocused ? -6 : 0) +
+            (isOtherClicked ? -10 : 0);
           const rot = (cardHover ? hoverRot[i] : 0) + (isFocused ? hoverRot[i] * 0.6 : 0);
+          const scale = isClicked ? 1 : isPressed ? 0.96 : 1;
           return (
             <div
               key={i}
@@ -386,7 +413,7 @@ function DepartmentCard({ label, description, color }: { label: string; descript
                 position: "absolute",
                 inset: 0,
                 zIndex: p.z,
-                transform: `translateY(${-ty}px) rotate(${rot}deg)`,
+                transform: `translateY(${-ty}px) rotate(${rot}deg) scale(${scale})`,
                 transition: "transform 500ms cubic-bezier(0.16, 1, 0.3, 1)",
                 transitionDelay: `${cardHover ? delay[i] : 0}ms`,
               }}
@@ -396,13 +423,32 @@ function DepartmentCard({ label, description, color }: { label: string; descript
                   position: "absolute",
                   inset: 0,
                   transform: `translate(${p.dx}px, ${p.dy}px) rotate(${p.rot}deg)`,
-                  background: p.fill,
+                  background: paperImages[i] ? `url(${paperImages[i]}) center/cover no-repeat ${p.fill}` : p.fill,
                 }}
               />
             </div>
           );
         })}
       </div>
+
+      {/* Sticker — small decorative badge on the folder, rotated slightly */}
+      {sticker && (
+        <img
+          src={sticker}
+          alt=""
+          style={{
+            position: "absolute",
+            right: 18,
+            bottom: 86,
+            width: 64,
+            height: "auto",
+            transform: "rotate(-12deg)",
+            zIndex: 4,
+            pointerEvents: "none",
+            filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.18))",
+          }}
+        />
+      )}
 
       {/* Folder front — solid, with a tab notch on the upper-left edge */}
       <div
