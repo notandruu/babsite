@@ -26,8 +26,20 @@ export default function PrototypePage() {
   const scrollProgressRef = useRef(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const snapResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deptNavRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
   const [ready, setReady] = useState(false);
+  const [deptNavOpen, setDeptNavOpen] = useState(false);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (deptNavRef.current && !deptNavRef.current.contains(e.target as Node)) {
+        setDeptNavOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
   const [s3Entered, setS3Entered] = useState(false);
   const [sDeptEntered, setSDeptEntered] = useState(false);
   useEffect(() => { const t = setTimeout(() => setReady(true), 80); return () => clearTimeout(t); }, []);
@@ -169,7 +181,38 @@ export default function PrototypePage() {
             <a href="/about" className="font-sans text-[13px] tracking-widest text-white/80 hover:text-white transition-colors duration-200">ABOUT</a>
             <a href="/work" className="font-sans text-[13px] tracking-widest text-white/80 hover:text-white transition-colors duration-200">WORK</a>
             <a href="/courses" className="font-sans text-[13px] tracking-widest text-white/80 hover:text-white transition-colors duration-200">COURSES</a>
-            <a href="#" className="font-sans text-[13px] tracking-widest text-[#FECB33] hover:text-white transition-colors duration-200">APPLY →</a>
+            {/* Departments dropdown */}
+            <div className="relative" ref={deptNavRef}>
+              <button
+                onClick={() => setDeptNavOpen(o => !o)}
+                className="font-sans text-[13px] tracking-widest text-white/80 hover:text-white transition-colors duration-200 flex items-center gap-1"
+              >
+                DEPARTMENTS
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" className={`transition-transform duration-200 ${deptNavOpen ? "rotate-180" : ""}`}>
+                  <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              {deptNavOpen && (
+                <div className="absolute top-full right-0 mt-3 bg-[#0c0c0c] border border-[rgba(255,255,255,0.07)] min-w-[180px] z-50">
+                  {[
+                    { href: "/department/consulting", label: "CONSULTING" },
+                    { href: "/department/education",  label: "EDUCATION" },
+                    { href: "/department/design",     label: "DESIGN" },
+                    { href: "/department/research",   label: "RESEARCH" },
+                  ].map(({ href, label }) => (
+                    <a
+                      key={label}
+                      href={href}
+                      onClick={() => setDeptNavOpen(false)}
+                      className="block px-5 py-3 font-sans text-[12px] tracking-widest text-white/60 hover:text-white hover:bg-white/[0.04] transition-colors border-b border-[rgba(255,255,255,0.07)] last:border-b-0"
+                    >
+                      {label}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+            <a href="/apply" className="font-sans text-[13px] tracking-widest text-[#FECB33] hover:text-white transition-colors duration-200">APPLY →</a>
           </div>
         </div>
       </div>
