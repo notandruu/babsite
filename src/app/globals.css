@@ -20,6 +20,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Card surface */
+.shiny-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0.5) 100%), #0a0a0a;
+}
+
 /* Sticker hover animation */
 .sticker-wrap {
   will-change: transform;

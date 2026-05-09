@@ -51,13 +51,14 @@ interface CampanileScene {
   readCtx: CanvasRenderingContext2D;
 }
 
-// Flat typed arrays for particle morph — avoids GC pressure
 interface MorphData {
   count: number;
-  sx: Float32Array; sy: Float32Array;   // source canvas coords
-  dx: Float32Array; dy: Float32Array;   // dest canvas coords
-  r: Uint8Array; g: Uint8Array; b: Uint8Array;  // dest color
-  chars: string[];                      // locked-in char at snapshot time
+  uniqueCount: number;                  // non-overflow particles; overflow ones fade out before arrival
+  sx: Float32Array; sy: Float32Array;
+  dx: Float32Array; dy: Float32Array;
+  lr: Uint8Array; lg: Uint8Array; lb: Uint8Array;  // logo color (t=0)
+  cr: Uint8Array; cg: Uint8Array; cb: Uint8Array;  // camp color (t=1)
+  chars: string[];
 }
 
 function makeLights(scene: THREE.Scene) {
@@ -72,7 +73,7 @@ function makeLights(scene: THREE.Scene) {
   top.position.set(0, 20, 4); scene.add(top);
 }
 
-export function HashMatrix({ scrollProgressRef }: { scrollProgressRef?: MutableRefObject<number> }) {
+export function HashMatrix({ scrollProgressRef, backgroundOnly }: { scrollProgressRef?: MutableRefObject<number>; backgroundOnly?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const linesRef = useRef<string[]>([]);
   const dimsRef = useRef({ cols: 0, rows: 0, charW: 0, charH: 0 });
@@ -200,52 +201,55 @@ export function HashMatrix({ scrollProgressRef }: { scrollProgressRef?: MutableR
       cols: number, rows: number,
       charW: number, charH: number,
       lines: string[]
-    ): MorphData {
-      // Collect lit cells from each shape
-      const logoLit: { x: number; y: number; col: number; row: number }[] = [];
+    ): MorphData | null {
+      const boost = 1.8;
+      const logoLit: { x: number; y: number; col: number; row: number; r: number; g: number; b: number }[] = [];
       const campLit: { x: number; y: number; r: number; g: number; b: number }[] = [];
 
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
           const pi = (row * cols + col) * 4;
-          if (logoPixels[pi + 3] > 20)
-            logoLit.push({ x: col * charW, y: row * charH, col, row });
-          if (campPixels[pi + 3] > 20) {
-            const boost = 1.8;
-            campLit.push({
-              x: col * charW, y: row * charH,
-              r: Math.min(255, Math.round(campPixels[pi]     * boost)),
-              g: Math.min(255, Math.round(campPixels[pi + 1] * boost)),
-              b: Math.min(255, Math.round(campPixels[pi + 2] * boost)),
-            });
-          }
+          if (logoPixels[pi + 3] > 20) logoLit.push({
+            x: col * charW, y: row * charH, col, row,
+            r: Math.min(255, Math.round(logoPixels[pi]     * boost)),
+            g: Math.min(255, Math.round(logoPixels[pi + 1] * boost)),
+            b: Math.min(255, Math.round(logoPixels[pi + 2] * boost)),
+          });
+          if (campPixels[pi + 3] > 20) campLit.push({
+            x: col * charW, y: row * charH,
+            r: Math.min(255, Math.round(campPixels[pi]     * boost)),
+            g: Math.min(255, Math.round(campPixels[pi + 1] * boost)),
+            b: Math.min(255, Math.round(campPixels[pi + 2] * boost)),
+          });
         }
       }
 
-      // Shuffle camp so logo cells get random camp destinations
+      if (logoLit.length < 50 || campLit.length < 50) return null;
+
       for (let i = campLit.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [campLit[i], campLit[j]] = [campLit[j], campLit[i]];
       }
 
-      // Only paired particles — every logo cell maps to a camp cell (wrap around)
-      // No extras: avoids off-screen clutter
+      const uniqueCount = Math.min(logoLit.length, campLit.length);
       const count = logoLit.length;
       const sx = new Float32Array(count); const sy = new Float32Array(count);
       const dx = new Float32Array(count); const dy = new Float32Array(count);
-      const r = new Uint8Array(count); const g = new Uint8Array(count); const b = new Uint8Array(count);
+      const lr = new Uint8Array(count); const lg = new Uint8Array(count); const lb = new Uint8Array(count);
+      const cr = new Uint8Array(count); const cg = new Uint8Array(count); const cb = new Uint8Array(count);
       const chars: string[] = new Array(count);
 
       for (let i = 0; i < count; i++) {
         const src = logoLit[i];
-        const dst = campLit[i % campLit.length]; // wrap: multiple logo → same camp cell is fine
+        const dst = campLit[i % campLit.length];
         sx[i] = src.x; sy[i] = src.y;
         dx[i] = dst.x; dy[i] = dst.y;
-        r[i] = dst.r; g[i] = dst.g; b[i] = dst.b;
+        lr[i] = src.r; lg[i] = src.g; lb[i] = src.b;
+        cr[i] = dst.r; cg[i] = dst.g; cb[i] = dst.b;
         chars[i] = lines[src.row]?.[src.col] ?? HEX[Math.floor(Math.random() * 16)];
       }
 
-      return { count, sx, sy, dx, dy, r, g, b, chars };
+      return { count, uniqueCount, sx, sy, dx, dy, lr, lg, lb, cr, cg, cb, chars };
     }
 
     function animate() {
@@ -322,36 +326,51 @@ export function HashMatrix({ scrollProgressRef }: { scrollProgressRef?: MutableR
       if (three) try { logoPixels = three.readCtx.getImageData(0, 0, cols, rows).data; } catch (_) {}
       if (camp)  try { campPixels = camp.readCtx.getImageData(0, 0, cols, rows).data;  } catch (_) {}
 
-      // Reset snapshot when user scrolls back to start
-      if (sp < 0.1) {
-        morphSnappedRef.current = false;
-        morphRef.current = null;
-      }
+      // t=0 → logo positions/colors, t=1 → camp positions/colors
+      const rawT = Math.min(1, Math.max(0, (sp - 0.35) / 0.65));
+      const t    = rawT * rawT * (3 - 2 * rawT); // smoothstep
 
-      // Take snapshot once when morph begins — requires both pixel sets ready
-      if (sp >= 0.35 && !morphSnappedRef.current && logoPixels && campPixels) {
-        morphSnappedRef.current = true;
-        morphRef.current = buildMorphSnapshot(logoPixels, campPixels, cols, rows, charW, charH, lines);
+      // Reset snapshot when morph fully rewinds — live logo takes over again
+      if (t < 0.001 && morphSnappedRef.current) {
+        morphRef.current = null;
+        morphSnappedRef.current = false;
+      }
+      // Take snapshot the moment scrolling begins, from the current live frame.
+      if (t > 0 && !morphSnappedRef.current && logoPixels && campPixels) {
+        const snap = buildMorphSnapshot(logoPixels, campPixels, cols, rows, charW, charH, lines);
+        if (snap) { morphRef.current = snap; morphSnappedRef.current = true; }
       }
 
       // ── Render ────────────────────────────────────────────────────────────
-      ctx.fillStyle = "#0a0a0a";
-      ctx.fillRect(0, 0, parentW, parentH);
+      ctx.clearRect(0, 0, parentW, parentH);
       ctx.textBaseline = "top";
       ctx.font = `${FONT_SIZE}px "Courier New", monospace`;
 
-      const rawT = morphRef.current ? Math.min(1, Math.max(0, (sp - 0.35) / 0.65)) : 0;
-      const t    = rawT * rawT * (3 - 2 * rawT); // smoothstep
+      // Background-only mode: render rolling text grid at low opacity, no 3D model
+      if (backgroundOnly) {
+        for (let row = 0; row < rows; row++) {
+          const line = lines[row]; if (!line) continue;
+          for (let col = 0; col < cols; col++) {
+            const ch = line[col]; if (!ch || ch === " ") continue;
+            const hv = heat[col + row * cols] ?? 0;
+            ctx.fillStyle = `rgba(255,255,255,${(0.09 + hv * 0.2).toFixed(3)})`;
+            ctx.fillText(ch, col * charW, row * charH);
+          }
+        }
+        frameRef.current = requestAnimationFrame(animate);
+        return;
+      }
 
-      if (sp < 0.35 || !morphRef.current) {
-        // ── Pre-morph: logo from live pixels ──────────────────────────────
+      ctx.fillStyle = "#0a0a0a";
+      ctx.fillRect(0, 0, parentW, parentH);
+
+      if (t <= 0 || !morphRef.current) {
+        // Live logo — cursor-responsive, used before morph starts
         if (logoPixels && mountFade > 0.01) {
           for (let row = 0; row < rows; row++) {
-            const line = lines[row];
-            if (!line) continue;
+            const line = lines[row]; if (!line) continue;
             for (let col = 0; col < cols; col++) {
-              const ch = line[col];
-              if (!ch || ch === " ") continue;
+              const ch = line[col]; if (!ch || ch === " ") continue;
               const pi = (row * cols + col) * 4;
               if (logoPixels[pi + 3] <= 20) continue;
               const hv = heat[col + row * cols] ?? 0;
@@ -365,24 +384,40 @@ export function HashMatrix({ scrollProgressRef }: { scrollProgressRef?: MutableR
             }
           }
         }
-      } else if (t < 1) {
-        // ── Particle morph: same chars travel logo → campanile ────────────
-        const morph = morphRef.current;
-        for (let i = 0; i < morph.count; i++) {
-          const x = morph.sx[i] + (morph.dx[i] - morph.sx[i]) * t;
-          const y = morph.sy[i] + (morph.dy[i] - morph.sy[i]) * t;
-          ctx.fillStyle = `rgba(${morph.r[i]},${morph.g[i]},${morph.b[i]},0.9)`;
-          ctx.fillText(morph.chars[i], x, y);
-        }
       } else {
-        // ── Post-morph: campanile from live pixels (full shape) ───────────
-        if (campPixels) {
+        // Particle morph + gradual crossfade to live camp over t=[0.72,1.0]
+        const campBlend = Math.min(1, Math.max(0, (t - 0.72) / 0.28));
+        // Characters rise up into position as camp materialises (offsets in px)
+        const campRise = (1 - campBlend) * (1 - campBlend) * parentH * 0.12;
+        const morph = morphRef.current;
+
+        // Particles (fade out as campBlend rises)
+        if (campBlend < 1) {
+          for (let i = 0; i < morph.count; i++) {
+            const isOverflow = i >= morph.uniqueCount;
+            let alpha = 0.9 * mountFade * (1 - campBlend);
+            if (isOverflow) {
+              const overflowFade = 1 - Math.min(1, Math.max(0, (t - 0.72) / 0.16));
+              if (overflowFade <= 0) continue;
+              alpha *= overflowFade;
+            }
+            if (alpha <= 0) continue;
+            const x = morph.sx[i] + (morph.dx[i] - morph.sx[i]) * t;
+            const y = morph.sy[i] + (morph.dy[i] - morph.sy[i]) * t;
+            const r = Math.round(morph.lr[i] + (morph.cr[i] - morph.lr[i]) * t);
+            const g = Math.round(morph.lg[i] + (morph.cg[i] - morph.lg[i]) * t);
+            const b = Math.round(morph.lb[i] + (morph.cb[i] - morph.lb[i]) * t);
+            ctx.fillStyle = `rgba(${r},${g},${b},${alpha.toFixed(2)})`;
+            ctx.fillText(morph.chars[i], x, y);
+          }
+        }
+
+        // Live camp pixels — rise up and fade in together
+        if (campBlend > 0 && campPixels) {
           for (let row = 0; row < rows; row++) {
-            const line = lines[row];
-            if (!line) continue;
+            const line = lines[row]; if (!line) continue;
             for (let col = 0; col < cols; col++) {
-              const ch = line[col];
-              if (!ch || ch === " ") continue;
+              const ch = line[col]; if (!ch || ch === " ") continue;
               const pi = (row * cols + col) * 4;
               if (campPixels[pi + 3] <= 20) continue;
               const hv = heat[col + row * cols] ?? 0;
@@ -391,8 +426,8 @@ export function HashMatrix({ scrollProgressRef }: { scrollProgressRef?: MutableR
               const gb = Math.min(255, Math.round(campPixels[pi + 1] * boost));
               const bb = Math.min(255, Math.round(campPixels[pi + 2] * boost));
               const brightness = (rb + gb + bb) / (3 * 255);
-              ctx.fillStyle = `rgba(${rb},${gb},${bb},${Math.min(1, 0.88 + brightness * 0.12 + hv * 0.05)})`;
-              ctx.fillText(ch, col * charW, row * charH);
+              ctx.fillStyle = `rgba(${rb},${gb},${bb},${Math.min(1, (0.88 + brightness * 0.12 + hv * 0.05) * campBlend)})`;
+              ctx.fillText(ch, col * charW, row * charH + campRise);
             }
           }
         }
