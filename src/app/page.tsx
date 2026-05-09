@@ -338,9 +338,22 @@ export default function PrototypePage() {
           pointerEvents: sDept > 0.5 ? "auto" : "none",
         }}
       >
-        {DEPARTMENTS.map((d) => (
-          <DepartmentCard key={d.label} label={d.label} description={d.description} color={d.color} frontImage={d.frontImage} middleImage={d.middleImage} backImage={d.backImage} sticker={d.sticker} />
-        ))}
+        {DEPARTMENTS.map((d, i) => {
+          const delay = 200 + i * 110;
+          return (
+            <div
+              key={d.label}
+              style={{
+                height: "100%",
+                opacity: sDeptEntered ? 1 : 0,
+                transform: sDeptEntered ? "translateY(0px)" : "translateY(20px)",
+                transition: `opacity 0.9s cubic-bezier(0.16,1,0.3,1) ${delay}ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
+              }}
+            >
+              <DepartmentCard label={d.label} description={d.description} color={d.color} frontImage={d.frontImage} middleImage={d.middleImage} backImage={d.backImage} sticker={d.sticker} />
+            </div>
+          );
+        })}
       </div>
 
       {/* Section 4 — clients marquee */}
