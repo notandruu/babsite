@@ -3,8 +3,8 @@
 import { useEffect, useRef, useCallback, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 
-/* ── Blockchain text ── */
 const HEX = "0123456789abcdef";
 const KEYWORDS = [
   "BLOCK", "HASH", "NONCE", "MERKLE", "SHA256", "CHAIN",
@@ -33,14 +33,43 @@ function buildLine(cols: number) {
   return line.slice(0, cols);
 }
 
-
 interface ThreeScene {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   logoGroup: THREE.Group;
-  readCanvas: HTMLCanvasElement; // 2D canvas to read pixels from
+  readCanvas: HTMLCanvasElement;
   readCtx: CanvasRenderingContext2D;
+}
+
+interface CampanileScene {
+  renderer: THREE.WebGLRenderer;
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  campGroup: THREE.Group;
+  readCanvas: HTMLCanvasElement;
+  readCtx: CanvasRenderingContext2D;
+}
+
+// Flat typed arrays for particle morph — avoids GC pressure
+interface MorphData {
+  count: number;
+  sx: Float32Array; sy: Float32Array;   // source canvas coords
+  dx: Float32Array; dy: Float32Array;   // dest canvas coords
+  r: Uint8Array; g: Uint8Array; b: Uint8Array;  // dest color
+  chars: string[];                      // locked-in char at snapshot time
+}
+
+function makeLights(scene: THREE.Scene) {
+  scene.add(new THREE.AmbientLight(0xffffff, 0.15));
+  const key = new THREE.DirectionalLight(0xfff0cc, 5.5);
+  key.position.set(10, 8, 12); scene.add(key);
+  const fill = new THREE.DirectionalLight(0xfecb33, 0.5);
+  fill.position.set(-8, 6, 8); scene.add(fill);
+  const rim = new THREE.DirectionalLight(0xff7700, 3.0);
+  rim.position.set(-2, -4, -12); scene.add(rim);
+  const top = new THREE.DirectionalLight(0xffffff, 1.2);
+  top.position.set(0, 20, 4); scene.add(top);
 }
 
 export function HashMatrix({ scrollProgressRef }: { scrollProgressRef?: MutableRefObject<number> }) {
@@ -49,329 +78,323 @@ export function HashMatrix({ scrollProgressRef }: { scrollProgressRef?: MutableR
   const dimsRef = useRef({ cols: 0, rows: 0, charW: 0, charH: 0 });
   const frameRef = useRef(0);
   const threeRef = useRef<ThreeScene | null>(null);
+  const campRef = useRef<CampanileScene | null>(null);
   const rotRef = useRef({ x: 0, y: 0 });
-  const autoYRef = useRef(0);
-  const dragRef = useRef({ down: false, lastX: 0, lastY: 0 });
   const spotRef = useRef({ x: -1, y: -1, active: false });
-  const textMaskRef = useRef<Uint8Array | null>(null);
-  const spSmoothRef = useRef(0); // internally lerped scroll progress
+  const mountTimeRef = useRef(Date.now());
+  // Particle morph snapshot — taken once when morph begins
+  const morphRef = useRef<MorphData | null>(null);
+  const morphSnappedRef = useRef(false);
 
-  /* ── Build Three.js offscreen scene ── */
   const buildThree = useCallback((cols: number, rows: number, pixelAspect: number) => {
-    // Render at character-grid resolution — each pixel = one character cell
-    const W = cols;
-    const H = rows;
-
     const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, preserveDrawingBuffer: true });
-    renderer.setSize(W, H);
+    renderer.setSize(cols, rows);
     renderer.setClearColor(0x000000, 0);
-
     const scene = new THREE.Scene();
-    // Use real pixel aspect so logo proportions aren't distorted by non-square character cells
     const camera = new THREE.PerspectiveCamera(55, pixelAspect, 0.1, 1000);
     camera.position.z = 19;
-
-    // Lights — key, fill, rim for depth + shadow contrast
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const key = new THREE.DirectionalLight(0xfff5d6, 3.5);
-    key.position.set(5, 10, 8);
-    scene.add(key);
-    const fill = new THREE.DirectionalLight(0xfecb33, 1.4);
-    fill.position.set(-8, -2, 5);
-    scene.add(fill);
-    const rim = new THREE.DirectionalLight(0xffa040, 1.2);
-    rim.position.set(2, -10, -6);
-    scene.add(rim);
-
-    // Load GLB logo
+    makeLights(scene);
     const logoGroup = new THREE.Group();
     scene.add(logoGroup);
-
-    const gltfLoader = new GLTFLoader();
-    gltfLoader.load("/assets/blockchain-logo.glb", (gltf) => {
+    new GLTFLoader().load("/assets/blockchain-logo.glb", (gltf) => {
       const model = gltf.scene;
-
-      // Apply metallic gold/orange materials
       model.traverse((child) => {
         if (!(child as THREE.Mesh).isMesh) return;
         const mesh = child as THREE.Mesh;
         const src = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
         const origColor = (src as THREE.MeshStandardMaterial).color?.clone() ?? new THREE.Color("#FECB33");
-        mesh.material = new THREE.MeshStandardMaterial({
-          color: origColor,
-          metalness: 0.9,
-          roughness: 0.12,
-        });
+        mesh.material = new THREE.MeshStandardMaterial({ color: origColor, metalness: 0.9, roughness: 0.12 });
       });
-
-      // Center, fit to view, orient facing camera
+      model.rotation.x = Math.PI / 2;
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-      // GLB lies flat (X-Z plane, Y is thickness) — rotate to face camera
-      model.rotation.x = Math.PI / 2;
-
-      // Scale based on face dimensions (X width, Z becomes height after rotation)
       const faceDim = Math.max(size.x, size.z);
-      const targetSize = 13;
-      const fitScale = targetSize / faceDim;
-      model.scale.setScalar(fitScale);
-
-      // Re-center after rotation + scale
+      const visibleWidth = 2 * Math.tan(27.5 * Math.PI / 180) * 19 * pixelAspect;
+      model.scale.setScalar((visibleWidth * 0.7) / faceDim);
       const box2 = new THREE.Box3().setFromObject(model);
       const center2 = box2.getCenter(new THREE.Vector3());
       model.position.set(-center2.x, -center2.y + 0.5, -center2.z);
-
       logoGroup.add(model);
     });
-
-    // 2D read canvas (reused every frame)
     const readCanvas = document.createElement("canvas");
-    readCanvas.width = W;
-    readCanvas.height = H;
+    readCanvas.width = cols; readCanvas.height = rows;
     const readCtx = readCanvas.getContext("2d")!;
-
     return { renderer, scene, camera, logoGroup, readCanvas, readCtx };
   }, []);
 
+  const buildCampanile = useCallback((cols: number, rows: number, pixelAspect: number) => {
+    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, preserveDrawingBuffer: true });
+    renderer.setSize(cols, rows);
+    renderer.setClearColor(0x000000, 0);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(55, pixelAspect, 0.1, 1000);
+    camera.position.z = 19;
+    makeLights(scene);
+    const campGroup = new THREE.Group();
+    scene.add(campGroup);
+    new STLLoader().load("/assets/campanile.stl", (geometry) => {
+      geometry.computeVertexNormals();
+      const mesh = new THREE.Mesh(
+        geometry,
+        new THREE.MeshStandardMaterial({ color: new THREE.Color("#FECB33"), metalness: 0.9, roughness: 0.12 })
+      );
+      mesh.rotation.x = -Math.PI / 2;
+      const box = new THREE.Box3().setFromObject(mesh);
+      const size = box.getSize(new THREE.Vector3());
+      const visibleHeight = 2 * Math.tan(27.5 * Math.PI / 180) * 19;
+      const tallDim = Math.max(size.x, size.y, size.z);
+      mesh.scale.setScalar((visibleHeight * 1.75) / tallDim);
+      const box2 = new THREE.Box3().setFromObject(mesh);
+      const center2 = box2.getCenter(new THREE.Vector3());
+      mesh.position.set(-center2.x, -center2.y, -center2.z);
+      campGroup.add(mesh);
+    });
+    const readCanvas = document.createElement("canvas");
+    readCanvas.width = cols; readCanvas.height = rows;
+    const readCtx = readCanvas.getContext("2d")!;
+    return { renderer, scene, camera, campGroup, readCanvas, readCtx };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
-    const FONT_SIZE = 9;
-    const LINE_HEIGHT = 11;
+    const FONT_SIZE = 9, LINE_HEIGHT = 11;
 
     function resize() {
       const parent = canvas!.parentElement!;
-      const w = parent.clientWidth;
-      const h = parent.clientHeight;
+      const w = parent.clientWidth, h = parent.clientHeight;
       const dpr = window.devicePixelRatio || 1;
-      canvas!.width = w * dpr;
-      canvas!.height = h * dpr;
-      canvas!.style.width = `${w}px`;
-      canvas!.style.height = `${h}px`;
+      canvas!.width = w * dpr; canvas!.height = h * dpr;
+      canvas!.style.width = `${w}px`; canvas!.style.height = `${h}px`;
       ctx.scale(dpr, dpr);
-
       ctx.font = `${FONT_SIZE}px "Courier New", monospace`;
       const charW = ctx.measureText("M").width;
       const charH = LINE_HEIGHT;
       const cols = Math.ceil(w / charW);
       const rows = Math.ceil(h / charH);
       dimsRef.current = { cols, rows, charW, charH };
-
-      const lines: string[] = [];
-      for (let r = 0; r < rows; r++) lines.push(buildLine(cols));
-      linesRef.current = lines;
-
-      // Build emboss text mask after fonts are loaded
-      const buildMask = () => {
-      const maskCanvas = document.createElement("canvas");
-      maskCanvas.width = w;
-      maskCanvas.height = h;
-      const mctx = maskCanvas.getContext("2d")!;
-      mctx.fillStyle = "white";
-      mctx.textBaseline = "middle";
-
-      const lines3 = [
-        { text: "BLOCKCHAIN", x: w * 0.5, y: h * 0.72, maxW: w * 0.80, style: `bold 100px sans-serif` },
-        { text: "@",          x: w * 0.5, y: h * 0.82, maxW: w * 0.10, style: `italic 100px "Instrument Serif", serif` },
-        { text: "Berkeley",   x: w * 0.5, y: h * 0.91, maxW: w * 0.70, style: `italic 100px "Instrument Serif", serif` },
-      ];
-      for (const { text, x, y, maxW, style } of lines3) {
-        mctx.font = style;
-        const fs = Math.floor(100 * maxW / mctx.measureText(text).width);
-        mctx.font = style.replace("100px", `${fs}px`);
-        mctx.textAlign = "center";
-        mctx.fillText(text, x, y);
-      }
-
-      const maskPx = mctx.getImageData(0, 0, w, h).data;
-      const mask = new Uint8Array(cols * rows);
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const px = Math.min(w - 1, Math.round((c + 0.5) * charW));
-          const py = Math.min(h - 1, Math.round((r + 0.5) * charH));
-          mask[r * cols + c] = maskPx[(py * w + px) * 4 + 3] > 20 ? 1 : 0;
-        }
-      }
-      textMaskRef.current = mask;
-      }; // end buildMask
-      document.fonts.ready.then(buildMask);
-
-      // Rebuild Three scene at new grid size
+      linesRef.current = Array.from({ length: rows }, () => buildLine(cols));
+      // Invalidate any existing snapshot when grid changes
+      morphRef.current = null;
+      morphSnappedRef.current = false;
       threeRef.current?.renderer.dispose();
       threeRef.current = buildThree(cols, rows, w / h);
+      campRef.current?.renderer.dispose();
+      campRef.current = buildCampanile(cols, rows, w / h);
     }
 
     resize();
     window.addEventListener("resize", resize);
 
-    /* ── Mouse events ── */
-    const onMove = (e: MouseEvent) => {
-      spotRef.current = { x: e.clientX, y: e.clientY, active: true };
-    };
+    const onMove = (e: MouseEvent) => { spotRef.current = { x: e.clientX, y: e.clientY, active: true }; };
     const onLeave = () => { spotRef.current.active = false; };
-
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseleave", onLeave);
 
     let heat = new Float32Array(0);
 
-    function animate() {
-      const { cols, rows, charW, charH } = dimsRef.current;
-      const needed = cols * rows;
-      if (heat.length < needed) heat = new Float32Array(needed);
-      const lines = linesRef.current;
-      const three = threeRef.current;
+    function buildMorphSnapshot(
+      logoPixels: Uint8ClampedArray,
+      campPixels: Uint8ClampedArray,
+      cols: number, rows: number,
+      charW: number, charH: number,
+      lines: string[]
+    ): MorphData {
+      // Collect lit cells from each shape
+      const logoLit: { x: number; y: number; col: number; row: number }[] = [];
+      const campLit: { x: number; y: number; r: number; g: number; b: number }[] = [];
 
-      // Internally smooth sp so snap momentum doesn't feel jarring
-      const spTarget = scrollProgressRef?.current ?? 0;
-      spSmoothRef.current += (spTarget - spSmoothRef.current) * 0.06;
-      const sp = spSmoothRef.current;
-      // Phase 1: 0→0.5 = camera zoom through logo + matrix fade in
-      // Phase 2: 0.5→1 = SVG burns into matrix below navbar
-      const phase1 = Math.min(1, sp / 0.5);
-      const phase2 = Math.max(0, Math.min(1, (sp - 0.5) / 0.5));
-
-      /* Camera zooms into center of logo, logo fades as camera gets close */
-      if (three) {
-        const targetZ = 19 - phase1 * 22; // 19 → -3, zooms through
-        three.camera.position.z += (targetZ - three.camera.position.z) * 0.055;
-        three.logoGroup.position.x += (0 - three.logoGroup.position.x) * 0.055;
-        three.logoGroup.position.y += (0 - three.logoGroup.position.y) * 0.055;
-        three.logoGroup.scale.setScalar(
-          three.logoGroup.scale.x + (1 - three.logoGroup.scale.x) * 0.055
-        );
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const pi = (row * cols + col) * 4;
+          if (logoPixels[pi + 3] > 20)
+            logoLit.push({ x: col * charW, y: row * charH, col, row });
+          if (campPixels[pi + 3] > 20) {
+            const boost = 1.8;
+            campLit.push({
+              x: col * charW, y: row * charH,
+              r: Math.min(255, Math.round(campPixels[pi]     * boost)),
+              g: Math.min(255, Math.round(campPixels[pi + 1] * boost)),
+              b: Math.min(255, Math.round(campPixels[pi + 2] * boost)),
+            });
+          }
+        }
       }
 
-      /* Logo fades out as camera zooms in close */
-      const logoAlpha = Math.max(0, 1 - Math.max(0, (phase1 - 0.3) / 0.6));
+      // Shuffle camp so logo cells get random camp destinations
+      for (let i = campLit.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [campLit[i], campLit[j]] = [campLit[j], campLit[i]];
+      }
 
+      // Only paired particles — every logo cell maps to a camp cell (wrap around)
+      // No extras: avoids off-screen clutter
+      const count = logoLit.length;
+      const sx = new Float32Array(count); const sy = new Float32Array(count);
+      const dx = new Float32Array(count); const dy = new Float32Array(count);
+      const r = new Uint8Array(count); const g = new Uint8Array(count); const b = new Uint8Array(count);
+      const chars: string[] = new Array(count);
 
-      /* Rotate Three scene — pure cursor driven */
+      for (let i = 0; i < count; i++) {
+        const src = logoLit[i];
+        const dst = campLit[i % campLit.length]; // wrap: multiple logo → same camp cell is fine
+        sx[i] = src.x; sy[i] = src.y;
+        dx[i] = dst.x; dy[i] = dst.y;
+        r[i] = dst.r; g[i] = dst.g; b[i] = dst.b;
+        chars[i] = lines[src.row]?.[src.col] ?? HEX[Math.floor(Math.random() * 16)];
+      }
+
+      return { count, sx, sy, dx, dy, r, g, b, chars };
+    }
+
+    function animate() {
+      const { cols, rows, charW, charH } = dimsRef.current;
+      const three = threeRef.current;
+      const camp  = campRef.current;
+
+      const mountAge = Date.now() - mountTimeRef.current;
+      const mountFade = Math.min(1, Math.max(0, (mountAge - 400) / 900));
+
+      const parent  = canvas!.parentElement!;
+      const parentW = parent.clientWidth;
+      const parentH = parent.clientHeight;
+      const sp = scrollProgressRef?.current ?? 0;
+
+      const aspect   = parentW / parentH;
+      const halfVisW = Math.tan(27.5 * Math.PI / 180) * 19 * aspect;
+      const halfVisH = Math.tan(27.5 * Math.PI / 180) * 19;
+
+      // Cursor tilt
+      const spot = spotRef.current;
+      if (spot.active) {
+        rotRef.current.y += (((spot.x / window.innerWidth)  - 0.5) *  0.25 - rotRef.current.y) * 0.04;
+        rotRef.current.x += (((spot.y / window.innerHeight) - 0.5) * -0.15 - rotRef.current.x) * 0.04;
+      } else {
+        rotRef.current.y += (0 - rotRef.current.y) * 0.02;
+        rotRef.current.x += (0 - rotRef.current.x) * 0.02;
+      }
+
+      // ── Logo 3D render ────────────────────────────────────────────────────
       if (three) {
-        const spot = spotRef.current;
-        if (spot.active) {
-          const targetY = ((spot.x / window.innerWidth) - 0.5) * 1.2;
-          const targetX = ((spot.y / window.innerHeight) - 0.5) * -0.6;
-          rotRef.current.y += (targetY - rotRef.current.y) * 0.06;
-          rotRef.current.x += (targetX - rotRef.current.x) * 0.06;
-        } else {
-          rotRef.current.y += (0 - rotRef.current.y) * 0.03;
-          rotRef.current.x += (0 - rotRef.current.x) * 0.03;
-        }
-
-        three.logoGroup.rotation.y = rotRef.current.y;
+        const heroX = ((0.82 * parentW - 12) / parentW - 0.5) * halfVisW * 2;
+        three.logoGroup.position.x = heroX;
+        three.logoGroup.position.y = 0;
+        three.logoGroup.scale.setScalar(three.logoGroup.scale.x + (1 - three.logoGroup.scale.x) * 0.055);
+        three.logoGroup.rotation.y = Math.PI / 9 + rotRef.current.y;
         three.logoGroup.rotation.x = rotRef.current.x;
         three.renderer.render(three.scene, three.camera);
-
-        // Copy WebGL canvas → 2D canvas so we can read pixels
         three.readCtx.clearRect(0, 0, cols, rows);
         three.readCtx.drawImage(three.renderer.domElement, 0, 0);
       }
 
-      /* Mutate text */
-      const mutations = Math.floor(cols * rows * 0.004);
-      for (let i = 0; i < mutations; i++) {
-        const r = Math.floor(Math.random() * rows);
-        const c = Math.floor(Math.random() * cols);
-        if (lines[r]) {
-          const ch = lines[r].split("");
-          ch[c] = HEX[Math.floor(Math.random() * 16)];
-          lines[r] = ch.join("");
-          heat[r * cols + c] = 1.0;
+      // ── Campanile 3D render — always at final position ────────────────────
+      if (camp) {
+        camp.campGroup.position.x = halfVisW * 0.55;
+        camp.campGroup.position.y = -halfVisH;
+        camp.campGroup.rotation.y = Math.PI / 12 + rotRef.current.y * 0.5;
+        camp.campGroup.rotation.x = rotRef.current.x * 0.3;
+        camp.renderer.render(camp.scene, camp.camera);
+        camp.readCtx.clearRect(0, 0, cols, rows);
+        camp.readCtx.drawImage(camp.renderer.domElement, 0, 0);
+      }
+
+      // ── Character grid mutation ───────────────────────────────────────────
+      const lines = linesRef.current;
+      if (heat.length < cols * rows) heat = new Float32Array(cols * rows);
+      for (let i = 0; i < Math.floor(cols * rows * 0.004); i++) {
+        const row = Math.floor(Math.random() * rows);
+        const col = Math.floor(Math.random() * cols);
+        if (lines[row]) {
+          const ch = lines[row].split("");
+          ch[col] = HEX[Math.floor(Math.random() * 16)];
+          lines[row] = ch.join("");
+          heat[row * cols + col] = 1.0;
         }
       }
       for (let i = 0; i < cols * rows; i++) {
         if (heat[i] > 0) heat[i] = Math.max(0, heat[i] - 0.015);
       }
 
-      /* Read Three pixel data once per frame */
-      let pixels: Uint8ClampedArray | null = null;
-      if (three) {
-        try {
-          pixels = three.readCtx.getImageData(0, 0, cols, rows).data;
-        } catch (_) { /* cross-origin guard */ }
+      // ── Pixel sampling ────────────────────────────────────────────────────
+      let logoPixels: Uint8ClampedArray | null = null;
+      let campPixels: Uint8ClampedArray | null = null;
+      if (three) try { logoPixels = three.readCtx.getImageData(0, 0, cols, rows).data; } catch (_) {}
+      if (camp)  try { campPixels = camp.readCtx.getImageData(0, 0, cols, rows).data;  } catch (_) {}
+
+      // Reset snapshot when user scrolls back to start
+      if (sp < 0.1) {
+        morphSnappedRef.current = false;
+        morphRef.current = null;
       }
 
-      /* Draw */
-      const parent = canvas!.parentElement!;
-      const pw = parent.clientWidth;
-      const ph = parent.clientHeight;
+      // Take snapshot once when morph begins — requires both pixel sets ready
+      if (sp >= 0.35 && !morphSnappedRef.current && logoPixels && campPixels) {
+        morphSnappedRef.current = true;
+        morphRef.current = buildMorphSnapshot(logoPixels, campPixels, cols, rows, charW, charH, lines);
+      }
+
+      // ── Render ────────────────────────────────────────────────────────────
       ctx.fillStyle = "#0a0a0a";
-      ctx.fillRect(0, 0, pw, ph);
-
-      /* Vertical grid lines — fade out as matrix fades in */
-      const lineOpacity = Math.max(0, 1 - phase1 * 2.5) * 0.07;
-      if (lineOpacity > 0.002) {
-        ctx.save();
-        ctx.strokeStyle = `rgba(255,255,255,${lineOpacity})`;
-        ctx.lineWidth = 1;
-        const xPositions = [
-          48,
-          pw * 0.25 + 12,
-          pw * 0.5,
-          pw * 0.75 - 12,
-          pw - 48,
-        ];
-        for (const x of xPositions) {
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, ph);
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-
-      ctx.font = `${FONT_SIZE}px "Courier New", monospace`;
+      ctx.fillRect(0, 0, parentW, parentH);
       ctx.textBaseline = "top";
+      ctx.font = `${FONT_SIZE}px "Courier New", monospace`;
 
-      for (let row = 0; row < rows; row++) {
-        const line = lines[row];
-        if (!line) continue;
-        const y = row * charH;
+      const rawT = morphRef.current ? Math.min(1, Math.max(0, (sp - 0.35) / 0.65)) : 0;
+      const t    = rawT * rawT * (3 - 2 * rawT); // smoothstep
 
-        for (let col = 0; col < cols; col++) {
-          const ch = line[col];
-          if (!ch || ch === " ") continue;
-          const x = col * charW;
-          const hv = col + row * cols < heat.length ? heat[col + row * cols] : 0;
-
-          /* Sample Three pixel at (col, row) */
-          let r3 = 0, g3 = 0, b3 = 0, a3 = 0;
-          if (pixels) {
-            const pi = (row * cols + col) * 4;
-            r3 = pixels[pi]; g3 = pixels[pi + 1]; b3 = pixels[pi + 2]; a3 = pixels[pi + 3];
+      if (sp < 0.35 || !morphRef.current) {
+        // ── Pre-morph: logo from live pixels ──────────────────────────────
+        if (logoPixels && mountFade > 0.01) {
+          for (let row = 0; row < rows; row++) {
+            const line = lines[row];
+            if (!line) continue;
+            for (let col = 0; col < cols; col++) {
+              const ch = line[col];
+              if (!ch || ch === " ") continue;
+              const pi = (row * cols + col) * 4;
+              if (logoPixels[pi + 3] <= 20) continue;
+              const hv = heat[col + row * cols] ?? 0;
+              const boost = 1.8;
+              const rb = Math.min(255, Math.round(logoPixels[pi]     * boost));
+              const gb = Math.min(255, Math.round(logoPixels[pi + 1] * boost));
+              const bb = Math.min(255, Math.round(logoPixels[pi + 2] * boost));
+              const brightness = (rb + gb + bb) / (3 * 255);
+              ctx.fillStyle = `rgba(${rb},${gb},${bb},${Math.min(1, (0.88 + brightness * 0.12 + hv * 0.05) * mountFade)})`;
+              ctx.fillText(ch, col * charW, row * charH);
+            }
           }
-
-          /* Mouse spotlight */
-          const spot = spotRef.current;
-          let spotlight = 0;
-          if (spot.active) {
-            const dx = x + charW / 2 - spot.x;
-            const dy = y + charH / 2 - spot.y;
-            const d = Math.sqrt(dx * dx + dy * dy);
-            if (d < 110) spotlight = (1 - d / 110) * 0.35;
+        }
+      } else if (t < 1) {
+        // ── Particle morph: same chars travel logo → campanile ────────────
+        const morph = morphRef.current;
+        for (let i = 0; i < morph.count; i++) {
+          const x = morph.sx[i] + (morph.dx[i] - morph.sx[i]) * t;
+          const y = morph.sy[i] + (morph.dy[i] - morph.sy[i]) * t;
+          ctx.fillStyle = `rgba(${morph.r[i]},${morph.g[i]},${morph.b[i]},0.9)`;
+          ctx.fillText(morph.chars[i], x, y);
+        }
+      } else {
+        // ── Post-morph: campanile from live pixels (full shape) ───────────
+        if (campPixels) {
+          for (let row = 0; row < rows; row++) {
+            const line = lines[row];
+            if (!line) continue;
+            for (let col = 0; col < cols; col++) {
+              const ch = line[col];
+              if (!ch || ch === " ") continue;
+              const pi = (row * cols + col) * 4;
+              if (campPixels[pi + 3] <= 20) continue;
+              const hv = heat[col + row * cols] ?? 0;
+              const boost = 1.8;
+              const rb = Math.min(255, Math.round(campPixels[pi]     * boost));
+              const gb = Math.min(255, Math.round(campPixels[pi + 1] * boost));
+              const bb = Math.min(255, Math.round(campPixels[pi + 2] * boost));
+              const brightness = (rb + gb + bb) / (3 * 255);
+              ctx.fillStyle = `rgba(${rb},${gb},${bb},${Math.min(1, 0.88 + brightness * 0.12 + hv * 0.05)})`;
+              ctx.fillText(ch, col * charW, row * charH);
+            }
           }
-
-          if (a3 > 20 && logoAlpha > 0.01) {
-            /* Inside 3D logo — fades out as camera zooms through */
-            const boost = 1.8;
-            const rb = Math.min(255, Math.round(r3 * boost));
-            const gb = Math.min(255, Math.round(g3 * boost));
-            const bb = Math.min(255, Math.round(b3 * boost));
-            const brightness = (rb + gb + bb) / (3 * 255);
-            const alpha = Math.min(1, (0.88 + brightness * 0.12 + hv * 0.05) * logoAlpha);
-            ctx.fillStyle = `rgba(${rb},${gb},${bb},${alpha})`;
-          } else {
-            /* Background matrix — fades in during phase 1 */
-            if (phase1 < 0.1) continue;
-            const alpha = Math.min(1, phase1 * (0.06 + hv * 0.08));
-            ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-          }
-
-          ctx.fillText(ch, x, y);
         }
       }
 
@@ -379,20 +402,15 @@ export function HashMatrix({ scrollProgressRef }: { scrollProgressRef?: MutableR
     }
 
     frameRef.current = requestAnimationFrame(animate);
-
     return () => {
       cancelAnimationFrame(frameRef.current);
       window.removeEventListener("resize", resize);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseleave", onLeave);
       threeRef.current?.renderer.dispose();
+      campRef.current?.renderer.dispose();
     };
-  }, [buildThree]);
+  }, [buildThree, buildCampanile]);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      className="absolute inset-0 w-full h-full"
-    />
-  );
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />;
 }
