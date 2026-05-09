@@ -68,8 +68,8 @@ export default function PrototypePage() {
     scrollProgressRef.current = Math.min(1, progress);  // morph uses 0–1
     setSp(progress);
     setScrolled(progress > 0.08);
-    if (progress > 3.25) setS3Entered(true);
-    else if (progress < 3.0) setS3Entered(false);
+    if (progress > 1.85) setS3Entered(true);
+    else if (progress < 1.7) setS3Entered(false);
     if (progress > 0.8 && !countStartedRef.current) {
       countStartedRef.current = true;
       startCountUp();
@@ -83,17 +83,16 @@ export default function PrototypePage() {
   const s2out = ss(Math.min(1, Math.max(0, (sp - 1.5)  / 0.5)));
   const s2 = s2in * (1 - s2out);
 
-  // Departments section — fades in 1.5→2.0, fades out 2.5→3.0
-  const sDeptIn  = ss(Math.min(1, Math.max(0, (sp - 1.5) / 0.5)));
-  const sDeptOut = ss(Math.min(1, Math.max(0, (sp - 2.5) / 0.5)));
-  const sDept = sDeptIn * (1 - sDeptOut);
+  // Clients section — fades in 1.5→2.0, fades out 3.5→4.0
+  const s3Raw = Math.min(1, Math.max(0, (sp - 1.5) / 0.5));
+  const s3out = ss(Math.min(1, Math.max(0, (sp - 3.5) / 0.5)));
+  const s3 = ss(s3Raw) * (1 - s3out);
 
-  // Clients section — fades in 2.5→3.0
-  const s3Raw = Math.min(1, Math.max(0, (sp - 2.5) / 0.5));
-  const s3 = ss(s3Raw);
+  // Marquee scroll progress within clients section (sp 2→4, full 200vh)
+  const s3p = Math.min(1, Math.max(0, (sp - 2) / 2));
 
-  // Marquee scroll progress within clients section (sp 3→4)
-  const s3p = Math.min(1, Math.max(0, sp - 3));
+  // Departments section — fades in 3.5→4.0
+  const sDept = ss(Math.min(1, Math.max(0, (sp - 3.5) / 0.5)));
 
   // Dark overlay — reaches 1.0 to fully bury the campanile
   const overlayOp = ss(Math.min(1, Math.max(0, (sp - 1.05) / 0.5))); // 1.05→1.55
@@ -349,8 +348,8 @@ export default function PrototypePage() {
       >
         <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
         <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
-        <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
         <section className="pointer-events-auto" style={{ height: "200vh", scrollSnapAlign: "start" }} />
+        <section className="h-screen pointer-events-auto" style={{ scrollSnapAlign: "start" }} />
       </div>
     </div>
   );
