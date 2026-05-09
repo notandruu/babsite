@@ -16,10 +16,10 @@ const ROW1 = [...LOGOS, ...LOGOS];
 const ROW2 = [...LOGOS.slice(9), ...LOGOS.slice(0, 9), ...LOGOS.slice(9), ...LOGOS.slice(0, 9)];
 
 const DEPARTMENTS = [
-  { label: "Consulting",  description: "Strategic Web3 advisory for protocols, funds, and enterprises.", color: "#D6B048", sticker: "/solidity-sticker.png" },
-  { label: "Design",      description: "Branding, product, and visual systems for crypto-native teams.",  color: "#DCB748", frontImage: "/brookwell.png", middleImage: "/bdax.png", backImage: "/simplifi.png", sticker: "/figma-sticker.png" },
-  { label: "Education",   description: "Decals, workshops, and curriculum bringing students into Web3.",  color: "#DCB748", sticker: "/x-sticker.png" },
-  { label: "Research",    description: "Original research on protocols, markets, and infrastructure.",    color: "#DCB748", sticker: "/hyperliquid-sticker.png" },
+  { label: "Consulting",  description: "Strategic Web3 advisory for protocols, funds, and enterprises.", color: "#D6B048", frontImage: "/assets/projects/cons_ripple.png",    middleImage: "/assets/projects/cons_openledger.png", backImage: "/assets/projects/cons_canton.png",    sticker: "/solidity-sticker.png" },
+  { label: "Design",      description: "Branding, product, and visual systems for crypto-native teams.",  color: "#DCB748", frontImage: "/assets/projects/design_bdax.png",    middleImage: "/assets/projects/design_brookwell.png", backImage: "/assets/projects/design_critiq.png",   sticker: "/figma-sticker.png" },
+  { label: "Education",   description: "Decals, workshops, and curriculum bringing students into Web3.",  color: "#DCB748", frontImage: "/assets/projects/edu_luma.png",       middleImage: "/assets/projects/edu_succinct.png",    backImage: "/assets/projects/edu_paradigm.png",   sticker: "/x-sticker.png" },
+  { label: "Research",    description: "Original research on protocols, markets, and infrastructure.",    color: "#DCB748", frontImage: "/assets/projects/research_mantle.png", middleImage: "/assets/projects/research_research.png", backImage: "/assets/projects/research_sandbox.png", sticker: "/hyperliquid-sticker.png" },
 ];
 
 export default function PrototypePage() {
@@ -71,6 +71,15 @@ export default function PrototypePage() {
   const [deptCounts, setDeptCounts] = useState(DEPT_STATS.map(() => 0));
   const deptCountStartedRef = useRef(false);
 
+  const CLIENT_STATS = [
+    { prefix: "",  target: 50,  suffix: "+", label: "Clients Served" },
+    { prefix: "$", target: 2,   suffix: "B+", label: "Assets Advised" },
+    { prefix: "",  target: 12,  suffix: "+", label: "Industries" },
+    { prefix: "",  target: 4,   suffix: "",  label: "Continents" },
+  ];
+  const [clientCounts, setClientCounts] = useState(CLIENT_STATS.map(() => 0));
+  const clientCountStartedRef = useRef(false);
+
   function runCountUp(targets: number[], setter: (v: number[]) => void) {
     const duration = 1400;
     const start = Date.now();
@@ -85,6 +94,7 @@ export default function PrototypePage() {
 
   function startCountUp() { runCountUp(STATS.map(s => s.target), setCounts); }
   function startDeptCountUp() { runCountUp(DEPT_STATS.map(s => s.target), setDeptCounts); }
+  function startClientCountUp() { runCountUp(CLIENT_STATS.map(s => s.target), setClientCounts); }
 
   const handleScroll = () => {
     const el = scrollContainerRef.current;
@@ -95,6 +105,10 @@ export default function PrototypePage() {
     setScrolled(progress > 0.08);
     if (progress > 1.85) setS3Entered(true);
     else if (progress < 1.7) setS3Entered(false);
+    if (progress > 1.85 && !clientCountStartedRef.current) {
+      clientCountStartedRef.current = true;
+      startClientCountUp();
+    }
     if (progress > 3.85) setSDeptEntered(true);
     else if (progress < 3.7) setSDeptEntered(false);
     if (progress > 3.8 && !deptCountStartedRef.current) {
@@ -326,7 +340,7 @@ export default function PrototypePage() {
         <div
           className="absolute"
           style={{
-            top: "calc(17vh - 60px)",
+            top: "calc(17vh - 44px)",
             right: 48,
             width: "calc(50% - 72px)",
             display: "grid",
@@ -414,43 +428,69 @@ export default function PrototypePage() {
         style={{ opacity: s3, transform: `translateY(${(1 - s3) * 14}px)`, transition: "none", gap: 56 }}
       >
         {/* Header */}
-        <div style={{ paddingLeft: 48, width: "50%" }}>
-          <p
-            className="text-white/40 text-[11px] tracking-[0.2em] uppercase mb-3"
-            style={{
-              fontFamily: "'Instrument Sans', sans-serif",
-              opacity: s3Entered ? 1 : 0,
-              transform: s3Entered ? "translateY(0px)" : "translateY(10px)",
-              transition: "opacity 0.9s cubic-bezier(0.16,1,0.3,1) 0ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) 0ms",
-            }}
-          >
-            Clients
-          </p>
-          <p
-            className="text-white text-3xl font-light"
-            style={{
-              fontFamily: "'Instrument Sans', sans-serif",
-              letterSpacing: "-0.03em",
-              opacity: s3Entered ? 1 : 0,
-              transform: s3Entered ? "translateY(0px)" : "translateY(12px)",
-              transition: "opacity 0.9s cubic-bezier(0.16,1,0.3,1) 80ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) 80ms",
-            }}
-          >
-            Trusted by industry leaders across the globe.
-          </p>
-          <p
-            className="text-white/65 text-base mt-3"
-            style={{
-              fontFamily: "'Instrument Sans', sans-serif",
-              letterSpacing: "-0.02em",
-              lineHeight: 1.55,
-              opacity: s3Entered ? 1 : 0,
-              transform: s3Entered ? "translateY(0px)" : "translateY(12px)",
-              transition: "opacity 0.9s cubic-bezier(0.16,1,0.3,1) 160ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) 160ms",
-            }}
-          >
-            From Fortune 500 companies to leading Web3 protocols, we've partnered with organizations shaping the future of finance and technology.
-          </p>
+        <div style={{ display: "flex", paddingLeft: 48, paddingRight: 48, gap: 24, alignItems: "center" }}>
+          <div style={{ width: "50%" }}>
+            <p
+              className="text-white/40 text-[11px] tracking-[0.2em] uppercase mb-3"
+              style={{
+                fontFamily: "'Instrument Sans', sans-serif",
+                opacity: s3Entered ? 1 : 0,
+                transform: s3Entered ? "translateY(0px)" : "translateY(10px)",
+                transition: "opacity 0.9s cubic-bezier(0.16,1,0.3,1) 0ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) 0ms",
+              }}
+            >
+              Clients
+            </p>
+            <p
+              className="text-white text-3xl font-light"
+              style={{
+                fontFamily: "'Instrument Sans', sans-serif",
+                letterSpacing: "-0.03em",
+                opacity: s3Entered ? 1 : 0,
+                transform: s3Entered ? "translateY(0px)" : "translateY(12px)",
+                transition: "opacity 0.9s cubic-bezier(0.16,1,0.3,1) 80ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) 80ms",
+              }}
+            >
+              Trusted by industry leaders across the globe.
+            </p>
+            <p
+              className="text-white/65 text-base mt-3"
+              style={{
+                fontFamily: "'Instrument Sans', sans-serif",
+                letterSpacing: "-0.02em",
+                lineHeight: 1.55,
+                maxWidth: 600,
+                opacity: s3Entered ? 1 : 0,
+                transform: s3Entered ? "translateY(0px)" : "translateY(12px)",
+                transition: "opacity 0.9s cubic-bezier(0.16,1,0.3,1) 160ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) 160ms",
+              }}
+            >
+              From Fortune 500 companies to leading Web3 protocols, we've partnered with organizations shaping the future of finance and technology.
+            </p>
+          </div>
+          <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", rowGap: 32, columnGap: 24 }}>
+            {CLIENT_STATS.map(({ prefix, suffix, label }, i) => {
+              const delay = 240 + i * 100;
+              return (
+                <div
+                  key={i}
+                  className="flex flex-col"
+                  style={{
+                    opacity: s3Entered ? 1 : 0,
+                    transform: s3Entered ? "translateY(0px)" : "translateY(12px)",
+                    transition: `opacity 0.9s cubic-bezier(0.16,1,0.3,1) ${delay}ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
+                  }}
+                >
+                  <p className="text-white text-5xl font-light mb-1" style={{ fontFamily: "'Instrument Sans', sans-serif", letterSpacing: "-0.04em" }}>
+                    {prefix}{clientCounts[i]}{suffix}
+                  </p>
+                  <p className="text-white/40 text-[11px] tracking-[0.15em] uppercase" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>
+                    {label}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Marquee rows */}
