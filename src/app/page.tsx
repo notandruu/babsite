@@ -227,9 +227,9 @@ export default function PrototypePage() {
       {(() => {
         const s3 = Math.min(1, Math.max(0, (spFull - 1.5) / 0.4));
         const departments = [
-          { label: "Consulting",  description: "Strategic Web3 advisory for protocols, funds, and enterprises.", color: "#D6BA67" },
+          { label: "Consulting",  description: "Strategic Web3 advisory for protocols, funds, and enterprises.", color: "#D6B048", sticker: "/solidity-sticker.png" },
           { label: "Design",      description: "Branding, product, and visual systems for crypto-native teams.",  color: "#DCB748", frontImage: "/brookwell.png", middleImage: "/bdax.png", backImage: "/simplifi.png", sticker: "/figma-sticker.png" },
-          { label: "Education",   description: "Decals, workshops, and curriculum bringing students into Web3.",  color: "#DCB748" },
+          { label: "Education",   description: "Decals, workshops, and curriculum bringing students into Web3.",  color: "#DCB748", sticker: "/x-sticker.png" },
           { label: "Research",    description: "Original research on protocols, markets, and infrastructure.",    color: "#DCB748", sticker: "/hyperliquid-sticker.png" },
         ];
         return (
@@ -260,9 +260,9 @@ export default function PrototypePage() {
       {(() => {
         const s3 = Math.min(1, Math.max(0, (spFull - 1.5) / 0.4));
         const departments = [
-          { label: "Consulting",  description: "Strategic Web3 advisory for protocols, funds, and enterprises.", color: "#D6BA67" },
+          { label: "Consulting",  description: "Strategic Web3 advisory for protocols, funds, and enterprises.", color: "#D6B048", sticker: "/solidity-sticker.png" },
           { label: "Design",      description: "Branding, product, and visual systems for crypto-native teams.",  color: "#DCB748", frontImage: "/brookwell.png", middleImage: "/bdax.png", backImage: "/simplifi.png", sticker: "/figma-sticker.png" },
-          { label: "Education",   description: "Decals, workshops, and curriculum bringing students into Web3.",  color: "#DCB748" },
+          { label: "Education",   description: "Decals, workshops, and curriculum bringing students into Web3.",  color: "#DCB748", sticker: "/x-sticker.png" },
           { label: "Research",    description: "Original research on protocols, markets, and infrastructure.",    color: "#DCB748", sticker: "/hyperliquid-sticker.png" },
         ];
         return (
@@ -445,7 +445,6 @@ function DepartmentCard({ label, description, color, frontImage, middleImage, ba
             transform: "rotate(-12deg)",
             zIndex: 4,
             pointerEvents: "none",
-            filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.18))",
           }}
         />
       )}
@@ -456,7 +455,8 @@ function DepartmentCard({ label, description, color, frontImage, middleImage, ba
           position: "relative",
           width: "100%",
           height: 280,
-          background: folderFill,
+          background: `linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 28%, rgba(0,0,0,0.10) 100%), ${folderFill}`,
+          boxShadow: "inset 0 -10px 20px rgba(0,0,0,0.18)",
           clipPath: "polygon(0% 8%, 54% 8%, 60% 0%, 100% 0%, 100% 100%, 0% 100%)",
           zIndex: 2,
         }}
