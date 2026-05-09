@@ -28,6 +28,7 @@ export default function PrototypePage() {
   const [scrolled, setScrolled] = useState(false);
   const [ready, setReady] = useState(false);
   const [s3Entered, setS3Entered] = useState(false);
+  const [sDeptEntered, setSDeptEntered] = useState(false);
   useEffect(() => { const t = setTimeout(() => setReady(true), 80); return () => clearTimeout(t); }, []);
 
   const fadeUp = (delay: number, up = 16) => ({
@@ -48,18 +49,29 @@ export default function PrototypePage() {
   const [counts, setCounts] = useState(STATS.map(() => 0));
   const countStartedRef = useRef(false);
 
-  function startCountUp() {
+  const DEPT_STATS = [
+    { prefix: "", target: 40, suffix: "+", label: "Active Members" },
+    { prefix: "", target: 4,  suffix: "",  label: "Projects Per Semester" },
+    { prefix: "", target: 12, suffix: "+", label: "Industry Partners" },
+    { prefix: "", target: 8,  suffix: "",  label: "Years At Berkeley" },
+  ];
+  const [deptCounts, setDeptCounts] = useState(DEPT_STATS.map(() => 0));
+  const deptCountStartedRef = useRef(false);
+
+  function runCountUp(targets: number[], setter: (v: number[]) => void) {
     const duration = 1400;
     const start = Date.now();
-    const targets = STATS.map(s => s.target);
     function tick() {
       const p = Math.min(1, (Date.now() - start) / duration);
       const eased = 1 - Math.pow(1 - p, 3);
-      setCounts(targets.map(t => Math.round(t * eased)));
+      setter(targets.map(t => Math.round(t * eased)));
       if (p < 1) requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
   }
+
+  function startCountUp() { runCountUp(STATS.map(s => s.target), setCounts); }
+  function startDeptCountUp() { runCountUp(DEPT_STATS.map(s => s.target), setDeptCounts); }
 
   const handleScroll = () => {
     const el = scrollContainerRef.current;
@@ -70,6 +82,12 @@ export default function PrototypePage() {
     setScrolled(progress > 0.08);
     if (progress > 1.85) setS3Entered(true);
     else if (progress < 1.7) setS3Entered(false);
+    if (progress > 3.85) setSDeptEntered(true);
+    else if (progress < 3.7) setSDeptEntered(false);
+    if (progress > 3.8 && !deptCountStartedRef.current) {
+      deptCountStartedRef.current = true;
+      startDeptCountUp();
+    }
     if (progress > 0.8 && !countStartedRef.current) {
       countStartedRef.current = true;
       startCountUp();
@@ -222,12 +240,78 @@ export default function PrototypePage() {
         style={{ opacity: sDept, transform: `translateY(${(1 - sDept) * 32}px)`, transition: "none" }}
       >
         <div className="absolute" style={{ top: 116, left: 48, right: 48 }}>
-          <p className="text-white/40 text-[11px] tracking-[0.2em] uppercase mb-2" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>
+          <p
+            className="text-white/40 text-[11px] tracking-[0.2em] uppercase mb-2"
+            style={{
+              fontFamily: "'Instrument Sans', sans-serif",
+              opacity: sDeptEntered ? 1 : 0,
+              transform: sDeptEntered ? "translateY(0px)" : "translateY(10px)",
+              transition: "opacity 0.9s cubic-bezier(0.16,1,0.3,1) 0ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) 0ms",
+            }}
+          >
             Departments
           </p>
-          <p className="text-white text-3xl leading-snug" style={{ fontFamily: "'Instrument Sans', sans-serif", letterSpacing: "-0.03em", maxWidth: 520 }}>
+          <p
+            className="text-white text-3xl leading-snug"
+            style={{
+              fontFamily: "'Instrument Sans', sans-serif",
+              letterSpacing: "-0.03em",
+              maxWidth: 520,
+              opacity: sDeptEntered ? 1 : 0,
+              transform: sDeptEntered ? "translateY(0px)" : "translateY(12px)",
+              transition: "opacity 0.9s cubic-bezier(0.16,1,0.3,1) 80ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) 80ms",
+            }}
+          >
             Four teams working at the intersection of blockchain, design, education, and research.
           </p>
+          <p
+            className="text-white/65 text-base mt-3"
+            style={{
+              fontFamily: "'Instrument Sans', sans-serif",
+              letterSpacing: "-0.02em",
+              lineHeight: 1.55,
+              maxWidth: 520,
+              opacity: sDeptEntered ? 1 : 0,
+              transform: sDeptEntered ? "translateY(0px)" : "translateY(12px)",
+              transition: "opacity 0.9s cubic-bezier(0.16,1,0.3,1) 160ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) 160ms",
+            }}
+          >
+            Each department brings specialized expertise — from on-chain consulting and protocol research to design systems and student-led education.
+          </p>
+        </div>
+        <div
+          className="absolute"
+          style={{
+            top: 116,
+            right: 48,
+            width: "calc(50% - 72px)",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            rowGap: 32,
+            columnGap: 24,
+          }}
+        >
+          {DEPT_STATS.map(({ prefix, suffix, label }, i) => {
+            const delay = 240 + i * 100;
+            return (
+              <div
+                key={i}
+                className="flex flex-col"
+                style={{
+                  opacity: sDeptEntered ? 1 : 0,
+                  transform: sDeptEntered ? "translateY(0px)" : "translateY(12px)",
+                  transition: `opacity 0.9s cubic-bezier(0.16,1,0.3,1) ${delay}ms, transform 0.9s cubic-bezier(0.16,1,0.3,1) ${delay}ms`,
+                }}
+              >
+                <p className="text-white text-5xl font-light mb-1" style={{ fontFamily: "'Instrument Sans', sans-serif", letterSpacing: "-0.04em" }}>
+                  {prefix}{deptCounts[i]}{suffix}
+                </p>
+                <p className="text-white/40 text-[11px] tracking-[0.15em] uppercase" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>
+                  {label}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </div>
 
