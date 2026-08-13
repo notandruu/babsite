@@ -30,7 +30,14 @@ export default function RootLayout({
       lang="en"
       className={`${instrumentSerif.variable} ${instrumentSans.variable} antialiased`}
     >
-      <body className="min-h-screen bg-surface text-white">{children}</body>
+      {/* suppressHydrationWarning: some browser extensions (Bitdefender's
+          bis_skin_checked/bis_register being the common one) inject attributes
+          onto <body> before React hydrates, which otherwise flags as a false
+          hydration mismatch in dev. Doesn't suppress real mismatches elsewhere
+          in the tree. */}
+      <body className="min-h-screen bg-surface text-white" suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   );
 }

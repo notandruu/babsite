@@ -1,0 +1,388 @@
+.stage {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  font-family: var(--font-showcase-mono), ui-monospace, monospace;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.46s;
+  background: radial-gradient(128% 104% at 50% 45%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.6) 100%);
+}
+.stage.isFocused .scrim {
+  opacity: 1;
+}
+
+.bloom {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0.22;
+  transition: opacity 0.5s;
+  background:
+    radial-gradient(55% 45% at 50% 42%, rgba(254, 223, 138, 0.55), rgba(0, 0, 0, 0) 72%),
+    radial-gradient(65% 55% at 85% 8%, rgba(254, 203, 51, 0.32), rgba(0, 0, 0, 0) 70%),
+    radial-gradient(75% 65% at 10% 105%, rgba(254, 178, 61, 0.28), rgba(0, 0, 0, 0) 68%);
+}
+.bloom[data-focused="true"] {
+  opacity: 0.5;
+}
+
+.hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  pointer-events: none;
+}
+.hudTop {
+  top: 0;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 28px 40px 0;
+}
+.hudBottom {
+  bottom: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 0 40px 26px;
+  transition: opacity 0.3s;
+}
+.stage.isFocused .hudBottom {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.headingSlot {
+  position: relative;
+  max-width: 60vw;
+  min-height: 74px;
+}
+
+.heading {
+  animation: showcaseFadeIn 0.42s ease both;
+}
+.stage.isFocused .heading {
+  animation: showcaseFadeOut 0.36s ease forwards;
+  pointer-events: none;
+}
+
+.kicker {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 223, 160, 0.78);
+}
+.title {
+  margin: 0;
+  font-size: clamp(24px, 3.2vw, 40px);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  color: #f7ecd9;
+}
+.tagline {
+  margin: 4px 0 0;
+  font-size: clamp(13px, 1.4vw, 17px);
+  color: rgba(247, 236, 217, 0.62);
+}
+
+.escBackWrap {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s 0.1s;
+}
+.stage.isFocused .escBackWrap {
+  opacity: 1;
+  pointer-events: auto;
+}
+.escBack {
+  padding: 4px 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #f7ecd9;
+}
+.escBack:hover {
+  color: #fecb33;
+}
+
+.metaTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.backLink {
+  color: #f7ecd9;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 12px;
+  white-space: nowrap;
+  text-decoration: none;
+  padding: 2px 5px;
+  background: linear-gradient(#fecb33, #fecb33) 0 center / 0% 100% no-repeat;
+  transition: background-size 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.12s 60ms;
+}
+.backLink::before {
+  content: "[ ";
+}
+.backLink::after {
+  content: " ]";
+}
+.backLink:hover,
+.backLink:focus-visible {
+  color: #171310;
+  background-size: 100% 100%;
+  outline: none;
+}
+
+.soundBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(247, 236, 217, 0.18);
+  background: rgba(247, 236, 217, 0.08);
+  color: rgba(247, 236, 217, 0.85);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, transform 0.18s;
+}
+.soundBtn:hover {
+  background: rgba(247, 236, 217, 0.16);
+}
+.soundBtn:active {
+  transform: scale(0.94);
+}
+.soundBtn[aria-pressed="true"] {
+  background: #fecb33;
+  color: #171310;
+  border-color: transparent;
+}
+
+.era {
+  position: absolute;
+  z-index: 2;
+  right: 40px;
+  bottom: 96px;
+  text-align: right;
+  pointer-events: none;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(247, 236, 217, 0.45);
+  animation: showcaseFadeIn 0.42s ease both;
+  transition: opacity 0.3s;
+}
+.stage.isFocused .era {
+  opacity: 0;
+}
+.eraTools {
+  color: inherit;
+}
+
+.focusInfo {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--sc-card-bottom, 66%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  width: fit-content;
+  max-width: min(540px, 90vw);
+  margin-inline: auto;
+  padding-top: 28px;
+  pointer-events: none;
+  animation: showcaseFadeIn 0.34s ease both;
+}
+.focusDesc {
+  margin: 0;
+  max-width: 520px;
+  text-align: center;
+  font-size: 13.5px;
+  line-height: 1.85;
+  color: rgba(247, 236, 217, 0.7);
+}
+.openLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(247, 236, 217, 0.92);
+  text-decoration: none;
+  pointer-events: auto;
+  transition: color 0.22s, background-color 0.22s;
+}
+.openLink::before {
+  content: "[";
+  margin-right: 12px;
+  color: rgba(247, 236, 217, 0.4);
+  transition: margin 0.22s, color 0.22s;
+}
+.openLink::after {
+  content: "]";
+  margin-left: 12px;
+  color: rgba(247, 236, 217, 0.4);
+  transition: margin 0.22s, color 0.22s;
+}
+.openLink:hover {
+  color: #171310;
+  background-color: #fecb33;
+}
+.openLink:hover::before {
+  margin-right: 18px;
+  color: rgba(23, 19, 16, 0.55);
+}
+.openLink:hover::after {
+  margin-left: 18px;
+  color: rgba(23, 19, 16, 0.55);
+}
+.openLink:focus-visible {
+  outline: 1px solid #fecb33;
+  outline-offset: 5px;
+}
+.openArrow {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+.openLink:hover .openArrow {
+  transform: translateX(3px);
+}
+
+.ruler {
+  position: relative;
+  width: min(600px, 80vw);
+  height: 20px;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+}
+.rulerTrack {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 100%;
+  will-change: transform;
+}
+.rulerTick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: rgba(247, 236, 217, 0.4);
+}
+.caret {
+  display: inline-block;
+  width: 6px;
+  height: 11px;
+  margin-left: 4px;
+  vertical-align: -1px;
+  background: #fecb33;
+  animation: showcaseBlink 1s steps(1) infinite;
+}
+
+.dots {
+  display: flex;
+  gap: 0;
+  pointer-events: auto;
+  touch-action: none;
+}
+.dot {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 30px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dot::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(247, 236, 217, 0.35);
+  transition: background 0.2s, transform 0.2s;
+}
+.dotOn::before {
+  background: #fecb33;
+  transform: scale(1.4);
+}
+
+.hint {
+  margin: 0;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(247, 236, 217, 0.55);
+}
+
+@keyframes showcaseFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes showcaseFadeOut {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+@keyframes showcaseBlink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .headingSlot {
+    max-width: 78vw;
+  }
+  .era {
+    display: none;
+  }
+  .ruler {
+    width: 88vw;
+  }
+}
