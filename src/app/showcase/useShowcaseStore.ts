@@ -3,7 +3,7 @@
 import { createContext, useContext } from "react";
 
 export const CARD_SPACING = 3.6;
-const ARROW_IMPULSE = 90;
+const ARROW_IMPULSE = 200;
 // Exponential ease rate (1/s) for eased travel toward a `travelTarget`
 // (dot clicks, and the pan phase before a card click enters focus). ~0.75s
 // to cover 90% of the distance — still a visible pan, not a cut, but no
@@ -95,9 +95,10 @@ export class ShowcaseStore {
         }
       } else if (this.velocity !== 0) {
         this.trackX += this.velocity * (dt / 16.67);
-        // Gentler decay than before (was 0.88) — a longer, smoother glide
-        // instead of a quick snap-to-stop.
-        this.velocity *= Math.pow(0.94, dt / 16.67);
+        // Much gentler decay than before (was 0.88, then 0.94) — roughly
+        // 2.4x longer coast, so a flick keeps gliding well after the wheel
+        // stops instead of settling out quickly.
+        this.velocity *= Math.pow(0.975, dt / 16.67);
         if (Math.abs(this.velocity) < 0.0008) this.velocity = 0;
       }
       const clamped = Math.max(0, Math.min(this.maxX, this.trackX));
@@ -119,10 +120,11 @@ export class ShowcaseStore {
     this.travelTarget = null;
     this.pendingFocusIndex = null;
     const delta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
-    // Lower gain + lower cap than before — same scroll gesture now covers
-    // meaningfully less ground, at a calmer top speed.
-    this.velocity -= delta * 0.001;
-    this.velocity = Math.max(-0.85, Math.min(0.85, this.velocity));
+    // Much lower gain + cap than before (was 0.001 / ±0.85) — a scroll
+    // gesture now takes noticeably more input to build up speed, and tops
+    // out much lower, on top of the longer decay above.
+    this.velocity -= delta * 0.00045;
+    this.velocity = Math.max(-0.45, Math.min(0.45, this.velocity));
   }
 
   /** Continuous free-roam travel from ← / → keys. */
