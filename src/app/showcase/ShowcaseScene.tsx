@@ -6,24 +6,17 @@ import { RoundedBox, Text, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { TIMELINE_STOPS, type TimelineStop } from "./data";
 import { CARD_SPACING, useShowcaseStoreContext, type ShowcaseSnapshot } from "./useShowcaseStore";
-
-const CARD_WIDTH = 3.2;
-const CARD_HEIGHT = 1.9;
-const CARD_DEPTH = 0.16;
-// RoundedBox bevel radius must stay under half the smallest dimension (depth here)
-// or the geometry degenerates — that produced invisible cards and crashed the
-// WebGL context entirely, so keep this comfortably below CARD_DEPTH / 2 (0.08).
-const CARD_RADIUS = 0.055;
-
-// The inset "screen" is a bounding box, not a forced aspect ratio — images are
-// contain-fit inside it (see CardScreen) so logos/screenshots never stretch.
-// Sized + positioned so kicker/title above and tags below both keep clear of it.
-const SCREEN_MAX_WIDTH = 1.6;
-const SCREEN_MAX_HEIGHT = 1.05;
-const SCREEN_CENTER_Y = -0.08;
+import { CARD, COLOR, TYPE, computeCardLayout, pickTitleFontSize } from "./theme";
 
 const FONT_REGULAR = "/fonts/JetBrainsMono-Regular.ttf";
 const FONT_MEDIUM = "/fonts/JetBrainsMono-Medium.ttf";
+
+// Same for every card by construction (see computeCardLayout) — computed
+// once rather than per-card.
+const LAYOUT = computeCardLayout();
+const TEXT_MAX_WIDTH = CARD.width - CARD.padding * 2;
+const TEXT_LEFT_X = -CARD.width / 2 + CARD.padding;
+const FRONT_Z = CARD.depth / 2 + 0.01;
 
 function useSnapshot(): ShowcaseSnapshot {
   const store = useShowcaseStoreContext();
@@ -66,34 +59,12 @@ function buildSkinTexture(stops: Array<[number, string]>, grainStrength: number)
 /** Muted brass/bronze skin for the active card — deliberately less saturated
  * than a literal "gold" to avoid reading as plastic/toy-like. */
 function useActiveSkinTexture() {
-  return useMemo(
-    () =>
-      buildSkinTexture(
-        [
-          [0, "#e8c874"],
-          [0.5, "#c99a3d"],
-          [1, "#2f2210"],
-        ],
-        10
-      ),
-    []
-  );
+  return useMemo(() => buildSkinTexture(COLOR.activeSkinStops, 10), []);
 }
 
 /** Subtle texture for inactive cards so they aren't a completely flat fill. */
 function useInactiveSkinTexture() {
-  return useMemo(
-    () =>
-      buildSkinTexture(
-        [
-          [0, "#221c15"],
-          [0.6, "#181310"],
-          [1, "#0e0b09"],
-        ],
-        6
-      ),
-    []
-  );
+  return useMemo(() => buildSkinTexture(COLOR.inactiveSkinStops, 6), []);
 }
 
 function CardScreen({ stop }: { stop: TimelineStop }) {
@@ -101,21 +72,23 @@ function CardScreen({ stop }: { stop: TimelineStop }) {
 
   const { width, height } = useMemo(() => {
     const img = texture.image as { width?: number; height?: number } | undefined;
-    const aspect = img?.width && img?.height ? img.width / img.height : SCREEN_MAX_WIDTH / SCREEN_MAX_HEIGHT;
-    let w = SCREEN_MAX_WIDTH;
+    const maxW = CARD.screenMaxWidth;
+    const maxH = LAYOUT.screenHeight;
+    const aspect = img?.width && img?.height ? img.width / img.height : maxW / maxH;
+    let w = maxW;
     let h = w / aspect;
-    if (h > SCREEN_MAX_HEIGHT) {
-      h = SCREEN_MAX_HEIGHT;
+    if (h > maxH) {
+      h = maxH;
       w = h * aspect;
     }
     return { width: w, height: h };
   }, [texture]);
 
   return (
-    <group position={[0, SCREEN_CENTER_Y, CARD_DEPTH / 2 + 0.004]}>
+    <group position={[0, LAYOUT.screenCenterY, FRONT_Z - 0.006]}>
       <mesh>
-        <planeGeometry args={[SCREEN_MAX_WIDTH, SCREEN_MAX_HEIGHT]} />
-        <meshBasicMaterial color="#0c0906" toneMapped={false} />
+        <planeGeometry args={[CARD.screenMaxWidth, LAYOUT.screenHeight]} />
+        <meshBasicMaterial color={COLOR.screenBacking} toneMapped={false} />
       </mesh>
       <mesh position={[0, 0, 0.004]}>
         <planeGeometry args={[width, height]} />
@@ -127,12 +100,20 @@ function CardScreen({ stop }: { stop: TimelineStop }) {
 
 function CardGlyphScreen({ glyph }: { glyph: string }) {
   return (
-    <group position={[0, SCREEN_CENTER_Y, CARD_DEPTH / 2 + 0.004]}>
+    <group position={[0, LAYOUT.screenCenterY, FRONT_Z - 0.006]}>
       <mesh>
-        <planeGeometry args={[SCREEN_MAX_WIDTH, SCREEN_MAX_HEIGHT]} />
-        <meshBasicMaterial color="#0c0906" toneMapped={false} />
+        <planeGeometry args={[CARD.screenMaxWidth, LAYOUT.screenHeight]} />
+        <meshBasicMaterial color={COLOR.screenBacking} toneMapped={false} />
       </mesh>
-      <Text font={FONT_MEDIUM} fontSize={0.42} color="#fecb33" anchorX="center" anchorY="middle" position={[0, 0, 0.006]}>
+      <Text
+        font={FONT_MEDIUM}
+        fontSize={TYPE.glyph.size}
+        lineHeight={TYPE.glyph.lineHeight}
+        color={COLOR.gold}
+        anchorX="center"
+        anchorY="middle"
+        position={[0, 0, 0.006]}
+      >
         {glyph}
       </Text>
     </group>
@@ -160,6 +141,10 @@ function TimelineCard({
   // Both the "front/active" gold skin and the close-up focus view put light
   // text over a bright surface, so both states need dark text.
   const useDarkText = isActive || isThisFocused;
+  // Fluid title size: the largest step that keeps this specific title on one
+  // line, so longer titles shrink instead of wrapping into the reserved
+  // (single-line-height) slot above the screen. See theme.ts.
+  const titleFontSize = useMemo(() => pickTitleFontSize(stop.title, TEXT_MAX_WIDTH), [stop.title]);
 
   useFrame((_, delta) => {
     const group = groupRef.current;
@@ -199,8 +184,8 @@ function TimelineCard({
   return (
     <group ref={groupRef} position={[index * CARD_SPACING, 0, 0]}>
       <RoundedBox
-        args={[CARD_WIDTH, CARD_HEIGHT, CARD_DEPTH]}
-        radius={CARD_RADIUS}
+        args={[CARD.width, CARD.height, CARD.depth]}
+        radius={CARD.radius}
         smoothness={3}
         onClick={(e) => {
           e.stopPropagation();
@@ -216,7 +201,7 @@ function TimelineCard({
       >
         <meshStandardMaterial
           ref={boxMatRef}
-          color={isActive ? "#c99a3d" : "#171310"}
+          color={isActive ? COLOR.cardActive : COLOR.cardInactive}
           map={isActive ? activeSkin : inactiveSkin}
           roughness={0.55}
           metalness={0.2}
@@ -235,37 +220,40 @@ function TimelineCard({
 
       <Text
         font={FONT_REGULAR}
-        position={[-CARD_WIDTH / 2 + 0.2, CARD_HEIGHT / 2 - 0.18, CARD_DEPTH / 2 + 0.01]}
-        fontSize={0.086}
+        position={[TEXT_LEFT_X, LAYOUT.kickerY, FRONT_Z]}
+        fontSize={TYPE.kicker.size}
+        lineHeight={TYPE.kicker.lineHeight}
         anchorX="left"
         anchorY="middle"
-        color={useDarkText ? "#2b1a10" : "#c7b6a2"}
-        letterSpacing={0.06}
+        color={useDarkText ? COLOR.inkDark : COLOR.paperMuted}
+        letterSpacing={TYPE.kicker.letterSpacing}
       >
         {stop.kicker}
       </Text>
       <Text
         font={FONT_MEDIUM}
-        position={[-CARD_WIDTH / 2 + 0.2, CARD_HEIGHT / 2 - 0.4, CARD_DEPTH / 2 + 0.01]}
-        fontSize={0.165}
+        position={[TEXT_LEFT_X, LAYOUT.titleY, FRONT_Z]}
+        fontSize={titleFontSize}
+        lineHeight={TYPE.title.lineHeight}
         anchorX="left"
         anchorY="middle"
-        color={useDarkText ? "#221407" : "#f5ead9"}
-        maxWidth={CARD_WIDTH - 0.4}
+        color={useDarkText ? COLOR.inkDarker : COLOR.paper}
+        maxWidth={TEXT_MAX_WIDTH}
       >
         {stop.title}
       </Text>
 
-      <group position={[-CARD_WIDTH / 2 + 0.2, -CARD_HEIGHT / 2 + 0.17, CARD_DEPTH / 2 + 0.01]}>
+      <group position={[TEXT_LEFT_X, LAYOUT.tagsY, FRONT_Z]}>
         {stop.tags.slice(0, 3).map((tag, i) => (
           <Text
             key={tag}
             font={FONT_REGULAR}
             position={[i * 0.98, 0, 0]}
-            fontSize={0.07}
+            fontSize={TYPE.tag.size}
+            lineHeight={TYPE.tag.lineHeight}
             anchorX="left"
             anchorY="middle"
-            color={useDarkText ? "#3a2712" : "#b7a68f"}
+            color={useDarkText ? COLOR.inkTag : COLOR.paperTag}
           >
             {tag}
           </Text>

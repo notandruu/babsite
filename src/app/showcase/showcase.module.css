@@ -1,4 +1,21 @@
+/*
+ * DOM-side color tokens. These mirror src/app/showcase/theme.ts's COLOR
+ * object by hand (CSS can't import TS constants without a build step) —
+ * if you change a value here, update theme.ts too, and vice versa.
+ *   --sc-paper-rgb   ~= theme.COLOR.paper       (#f7ecd9)
+ *   --sc-gold        == theme.COLOR.gold        (#fecb33)
+ *   --sc-ink / -rgb  ~= theme.COLOR.cardInactive (#171310)
+ */
 .stage {
+  --sc-paper-rgb: 247, 236, 217;
+  --sc-kicker-rgb: 255, 223, 160;
+  --sc-gold: #fecb33;
+  --sc-gold-rgb: 254, 203, 51;
+  --sc-ink: #171310;
+  --sc-ink-rgb: 23, 19, 16;
+  --sc-bloom-hi-rgb: 254, 223, 138;
+  --sc-bloom-lo-rgb: 254, 178, 61;
+
   position: absolute;
   inset: 0;
   z-index: 2;
@@ -28,9 +45,9 @@
   opacity: 0.22;
   transition: opacity 0.5s;
   background:
-    radial-gradient(55% 45% at 50% 42%, rgba(254, 223, 138, 0.55), rgba(0, 0, 0, 0) 72%),
-    radial-gradient(65% 55% at 85% 8%, rgba(254, 203, 51, 0.32), rgba(0, 0, 0, 0) 70%),
-    radial-gradient(75% 65% at 10% 105%, rgba(254, 178, 61, 0.28), rgba(0, 0, 0, 0) 68%);
+    radial-gradient(55% 45% at 50% 42%, rgba(var(--sc-bloom-hi-rgb), 0.55), rgba(0, 0, 0, 0) 72%),
+    radial-gradient(65% 55% at 85% 8%, rgba(var(--sc-gold-rgb), 0.32), rgba(0, 0, 0, 0) 70%),
+    radial-gradient(75% 65% at 10% 105%, rgba(var(--sc-bloom-lo-rgb), 0.28), rgba(0, 0, 0, 0) 68%);
 }
 .bloom[data-focused="true"] {
   opacity: 0.5;
@@ -83,7 +100,7 @@
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(255, 223, 160, 0.78);
+  color: rgba(var(--sc-kicker-rgb), 0.78);
 }
 .title {
   margin: 0;
@@ -91,12 +108,12 @@
   font-weight: 400;
   line-height: 1.05;
   letter-spacing: 0.01em;
-  color: #f7ecd9;
+  color: rgb(var(--sc-paper-rgb));
 }
 .tagline {
   margin: 4px 0 0;
   font-size: clamp(13px, 1.4vw, 17px);
-  color: rgba(247, 236, 217, 0.62);
+  color: rgba(var(--sc-paper-rgb), 0.62);
 }
 
 .escBackWrap {
@@ -119,10 +136,10 @@
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #f7ecd9;
+  color: rgb(var(--sc-paper-rgb));
 }
 .escBack:hover {
-  color: #fecb33;
+  color: var(--sc-gold);
 }
 
 .metaTop {
@@ -133,14 +150,14 @@
 }
 
 .backLink {
-  color: #f7ecd9;
+  color: rgb(var(--sc-paper-rgb));
   text-transform: uppercase;
   letter-spacing: 0.14em;
   font-size: 12px;
   white-space: nowrap;
   text-decoration: none;
   padding: 2px 5px;
-  background: linear-gradient(#fecb33, #fecb33) 0 center / 0% 100% no-repeat;
+  background: linear-gradient(var(--sc-gold), var(--sc-gold)) 0 center / 0% 100% no-repeat;
   transition: background-size 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.12s 60ms;
 }
 .backLink::before {
@@ -151,7 +168,7 @@
 }
 .backLink:hover,
 .backLink:focus-visible {
-  color: #171310;
+  color: var(--sc-ink);
   background-size: 100% 100%;
   outline: none;
 }
@@ -164,22 +181,22 @@
   height: 34px;
   padding: 0;
   border-radius: 999px;
-  border: 1px solid rgba(247, 236, 217, 0.18);
-  background: rgba(247, 236, 217, 0.08);
-  color: rgba(247, 236, 217, 0.85);
+  border: 1px solid rgba(var(--sc-paper-rgb), 0.18);
+  background: rgba(var(--sc-paper-rgb), 0.08);
+  color: rgba(var(--sc-paper-rgb), 0.85);
   backdrop-filter: blur(6px);
   cursor: pointer;
   transition: background 0.18s, color 0.18s, transform 0.18s;
 }
 .soundBtn:hover {
-  background: rgba(247, 236, 217, 0.16);
+  background: rgba(var(--sc-paper-rgb), 0.16);
 }
 .soundBtn:active {
   transform: scale(0.94);
 }
 .soundBtn[aria-pressed="true"] {
-  background: #fecb33;
-  color: #171310;
+  background: var(--sc-gold);
+  color: var(--sc-ink);
   border-color: transparent;
 }
 
@@ -193,7 +210,7 @@
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(247, 236, 217, 0.45);
+  color: rgba(var(--sc-paper-rgb), 0.45);
   animation: showcaseFadeIn 0.42s ease both;
   transition: opacity 0.3s;
 }
@@ -227,7 +244,7 @@
   text-align: center;
   font-size: 13.5px;
   line-height: 1.85;
-  color: rgba(247, 236, 217, 0.7);
+  color: rgba(var(--sc-paper-rgb), 0.7);
 }
 .openLink {
   display: inline-flex;
@@ -238,7 +255,7 @@
   font-size: 12.5px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(247, 236, 217, 0.92);
+  color: rgba(var(--sc-paper-rgb), 0.92);
   text-decoration: none;
   pointer-events: auto;
   transition: color 0.22s, background-color 0.22s;
@@ -246,29 +263,29 @@
 .openLink::before {
   content: "[";
   margin-right: 12px;
-  color: rgba(247, 236, 217, 0.4);
+  color: rgba(var(--sc-paper-rgb), 0.4);
   transition: margin 0.22s, color 0.22s;
 }
 .openLink::after {
   content: "]";
   margin-left: 12px;
-  color: rgba(247, 236, 217, 0.4);
+  color: rgba(var(--sc-paper-rgb), 0.4);
   transition: margin 0.22s, color 0.22s;
 }
 .openLink:hover {
-  color: #171310;
-  background-color: #fecb33;
+  color: var(--sc-ink);
+  background-color: var(--sc-gold);
 }
 .openLink:hover::before {
   margin-right: 18px;
-  color: rgba(23, 19, 16, 0.55);
+  color: rgba(var(--sc-ink-rgb), 0.55);
 }
 .openLink:hover::after {
   margin-left: 18px;
-  color: rgba(23, 19, 16, 0.55);
+  color: rgba(var(--sc-ink-rgb), 0.55);
 }
 .openLink:focus-visible {
-  outline: 1px solid #fecb33;
+  outline: 1px solid var(--sc-gold);
   outline-offset: 5px;
 }
 .openArrow {
@@ -302,7 +319,7 @@
   white-space: nowrap;
   font-size: 10px;
   letter-spacing: 0.08em;
-  color: rgba(247, 236, 217, 0.4);
+  color: rgba(var(--sc-paper-rgb), 0.4);
 }
 .caret {
   display: inline-block;
@@ -310,7 +327,7 @@
   height: 11px;
   margin-left: 4px;
   vertical-align: -1px;
-  background: #fecb33;
+  background: var(--sc-gold);
   animation: showcaseBlink 1s steps(1) infinite;
 }
 
@@ -336,11 +353,11 @@
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: rgba(247, 236, 217, 0.35);
+  background: rgba(var(--sc-paper-rgb), 0.35);
   transition: background 0.2s, transform 0.2s;
 }
 .dotOn::before {
-  background: #fecb33;
+  background: var(--sc-gold);
   transform: scale(1.4);
 }
 
@@ -350,7 +367,7 @@
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(247, 236, 217, 0.55);
+  color: rgba(var(--sc-paper-rgb), 0.55);
 }
 
 @keyframes showcaseFadeIn {

@@ -20,8 +20,8 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     id: "founding",
     year: "2014",
     type: "milestone",
-    kicker: "THE BEGINNING",
-    title: "Founded as Bitcoin Association of Berkeley",
+    kicker: "FOUNDED 2014",
+    title: "Bitcoin Association of Berkeley",
     tagline: "A handful of names on a sign-in sheet",
     description:
       "A small group of students signed up at the club's first general meeting in Fall 2014, under its original name, Bitcoin Association of Berkeley. It would take two more years and a rebrand before it became Blockchain at Berkeley.",
