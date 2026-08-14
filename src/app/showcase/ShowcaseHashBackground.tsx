@@ -4,29 +4,46 @@ import { useEffect, useRef } from "react";
 import { TIMELINE_STOPS } from "./data";
 import { CARD_SPACING, useShowcaseStoreContext } from "./useShowcaseStore";
 
-// Four sparse era markers, not one per card and not one per year — the
-// actual bug behind "flickers past too fast" was never the transition's own
-// pacing, it was that a finer-grained set of milestones gave each one a
-// narrower slice of scroll distance to live in, so ordinary scrolling blew
-// through several within a second regardless of how the transition itself
-// was tuned. Four wide segments means each year is naturally on screen for
-// a real stretch of travel, so the numeral can update immediately — no
-// artificial hold needed — and still never feel like it's flickering.
-const MILESTONE_YEARS = ["2014", "2018", "2022", "2026"];
+// Every year of the club's life, 2014 through now — no gaps, no sampling.
+// The hex field behind the cards is a ledger, and a ledger doesn't skip
+// blocks: the years with no card behind them (2015, 2025) still get counted,
+// which is exactly the point. A decade of continuous operation is the
+// credential; a highlight reel of four would undersell it.
+const YEAR_START = 2014;
+const YEAR_END = 2026;
+const YEARS = Array.from({ length: YEAR_END - YEAR_START + 1 }, (_, i) => String(YEAR_START + i));
+const YEAR_DIGITS = 4;
 
-// Same hex-noise language as the homepage hero (src/components/HashMatrix.tsx,
-// backgroundOnly mode) — this is a smaller, purpose-built sibling rather than
-// a shared import, since it also needs to weave in real timeline years and
-// react to store.trackX, neither of which the homepage version knows about.
+// Ambient hex field, same visual language as the homepage hero
+// (src/components/HashMatrix.tsx). Where the homepage seeds its noise with
+// generic blockchain vocabulary, this seeds it with B@B's actual record —
+// the partners, the scale, the numbers. It reads as texture at a glance and
+// as a résumé if you actually look, which is the right way to carry
+// credibility on a page like this: earned by density, not announced in a
+// banner. Every token below is sourced from the club's own history deck
+// (see data.ts) or the homepage's own stat blocks.
 const HEX = "0123456789abcdef";
+const CREDENTIALS = [
+  "QUALCOMM", "CONSENSYS", "RIPPLE", "BASF", "FORD", "ALEO",
+  "ETHGLOBAL", "BERKELEY HAAS", "SUTARDJA", "ETHEREUM", "CESC",
+  "$2B+ ADVISED", "300+ MEMBERS", "200K+ STUDENTS", "50+ CLIENTS",
+  "12+ INDUSTRIES", "4 CONTINENTS", "EST 2014",
+];
+
 function randomHex(len: number) {
   let s = "";
   for (let i = 0; i < len; i++) s += HEX[Math.floor(Math.random() * 16)];
   return s;
 }
+function randomFragment() {
+  // Roughly one token in twelve, so they're a reward for looking rather
+  // than the dominant texture.
+  if (Math.random() < 0.08) return CREDENTIALS[Math.floor(Math.random() * CREDENTIALS.length)];
+  return randomHex(8);
+}
 function buildLine(cols: number) {
   let line = "";
-  while (line.length < cols) line += randomHex(8) + " ";
+  while (line.length < cols) line += randomFragment() + " ";
   return line.slice(0, cols);
 }
 
@@ -36,26 +53,37 @@ function buildLine(cols: number) {
 // a shape confined to a strip that avoids the cards entirely.
 const GLYPH_CENTER_Y_FRAC = 0.34;
 const GLYPH_FONT_FRAC = 0.4;
+const GLYPH_TRACKING_FRAC = 0.16;
 
-// Whatever random hex character happened to be sitting at a lit cell in the
-// ambient field made a poor "pixel" for the numeral — each glyph has its own
-// shape and ink weight, so the outline read as noisy static rather than a
-// digit. A fixed glyph makes every lit cell read the same way, so the
-// silhouette carries the shape.
+// Whatever random hex character happened to be sitting at a lit cell made a
+// poor "pixel" for the numeral — each glyph has its own shape and ink
+// weight, so the outline read as noisy static rather than a digit. A fixed
+// glyph makes every lit cell read the same way, so the silhouette carries
+// the shape.
 const GLYPH_PIXEL = "0";
 
-// A pure instant swap read as flat and mechanical — like a plain counter
-// ticking up rather than something built out of this page's own material.
-// This brief window of the lit cells flickering through random hex before
-// settling on the steady glyph is a "decoding" beat, not motion — cheaper
-// and calmer than a particle flight, but still an event rather than a cut.
-const SCRAMBLE_MS = 260;
+// Per-digit resolve, not a whole-numeral swap. This is the fix for the
+// strobing: at one year per step, 2014 -> 2015 changes exactly one of four
+// digits, so three quarters of the numeral never moves and the year stays
+// continuously readable. A fast scroll then reads as a cascading roll —
+// like an odometer or a departure board spinning up — instead of the entire
+// shape blinking off and on. Digits settle left to right (LADDER_MS apart),
+// which is what makes the cascade feel mechanical and deliberate rather
+// than simultaneous.
+const RESOLVE_MS = 260;
+const LADDER_MS = 55;
 
 interface LitCell {
   x: number;
   y: number;
   row: number;
   col: number;
+}
+
+interface DigitSlot {
+  char: string;
+  cells: LitCell[];
+  resolveUntil: number;
 }
 
 export function ShowcaseHashBackground() {
@@ -78,15 +106,14 @@ export function ShowcaseHashBackground() {
     let raf = 0;
     // Offscreen canvas at exactly one pixel per character cell (cols x rows,
     // not screen pixels) — same trick HashMatrix uses to sample where a 3D
-    // model lands on the character grid, but here it's a year numeral
-    // rendered directly at grid resolution, so sampling its alpha per cell
-    // gives the exact set of grid cells that outline that year.
+    // model lands on the character grid, but here it's a digit rendered
+    // directly at grid resolution, so sampling its alpha per cell gives the
+    // exact set of grid cells that outline that digit.
     let glyphCanvas: HTMLCanvasElement | null = null;
     let glyphCtx: CanvasRenderingContext2D | null = null;
 
-    let shownIndex = -1;
-    let currentLit: LitCell[] = [];
-    let scrambleUntil = 0;
+    let shownYear = "";
+    let slots: DigitSlot[] = [];
 
     // Archivo Black for the numeral stencil specifically (not the ambient
     // field, which stays Courier New to keep the hex-code look) — canvas
@@ -99,7 +126,7 @@ export function ShowcaseHashBackground() {
     document.fonts
       .load('400 40px "Archivo Black"')
       .then(() => {
-        shownIndex = -1; // force a re-sample now that the real font is ready
+        shownYear = ""; // force a re-sample now that the real font is ready
       })
       .catch(() => {});
 
@@ -124,32 +151,39 @@ export function ShowcaseHashBackground() {
       glyphCanvas.width = cols;
       glyphCanvas.height = rows;
       glyphCtx = glyphCanvas.getContext("2d");
-      shownIndex = -1;
-      currentLit = [];
+      shownYear = "";
+      slots = [];
     }
     resize();
     window.addEventListener("resize", resize);
 
-    function sampleLit(year: string): LitCell[] {
+    /** Grid-cell center for digit slot `i` of a YEAR_DIGITS-wide numeral.
+     * Digits are positioned by hand rather than via canvas letterSpacing so
+     * each one can be sampled independently — that per-slot isolation is
+     * what makes the odometer resolve possible. */
+    function digitCenterX(i: number, digitW: number, tracking: number) {
+      const total = YEAR_DIGITS * digitW + (YEAR_DIGITS - 1) * tracking;
+      return cols / 2 - total / 2 + i * (digitW + tracking) + digitW / 2;
+    }
+
+    function sampleDigit(ch: string, slotIndex: number): LitCell[] {
       if (!glyphCtx || !glyphCanvas) return [];
+      const fontPx = Math.round(rows * GLYPH_FONT_FRAC);
       glyphCtx.clearRect(0, 0, cols, rows);
       glyphCtx.fillStyle = "#fff";
-      glyphCtx.strokeStyle = "#fff";
       glyphCtx.textAlign = "center";
       glyphCtx.textBaseline = "middle";
-      const fontPx = Math.round(rows * GLYPH_FONT_FRAC);
+      // No stroke pass — Archivo Black is already maximum-weight, and
+      // stroking an outline on top of that fills in the counters of digits
+      // like 0/6/8/9, turning them into solid discs.
       glyphCtx.font = `400 ${fontPx}px "Archivo Black", "Arial Black", sans-serif`;
-      // Digits sitting flush against each other were part of why the shape
-      // read as a blob rather than four distinct characters — spacing them
-      // out gives each one room to be told apart from its neighbors.
-      glyphCtx.letterSpacing = `${Math.round(fontPx * 0.16)}px`;
-      const x = cols / 2;
-      const y = rows * GLYPH_CENTER_Y_FRAC;
-      // No stroke pass here, unlike the thinner serif this replaced —
-      // Archivo Black is already maximum-weight, and stroking an outline on
-      // top of that filled in the counters of digits like 0/6/8/9, turning
-      // them into solid discs instead of recognizable characters.
-      glyphCtx.fillText(year, x, y);
+      const digitW = glyphCtx.measureText("0").width;
+      const tracking = fontPx * GLYPH_TRACKING_FRAC;
+      glyphCtx.fillText(
+        ch,
+        digitCenterX(slotIndex, digitW, tracking),
+        rows * GLYPH_CENTER_Y_FRAC
+      );
       const data = glyphCtx.getImageData(0, 0, cols, rows).data;
       const lit: LitCell[] = [];
       for (let row = 0; row < rows; row++) {
@@ -165,6 +199,7 @@ export function ShowcaseHashBackground() {
     function animate() {
       const w = window.innerWidth;
       const h = window.innerHeight;
+      const now = performance.now();
 
       for (let i = 0; i < Math.floor(cols * rows * 0.0025); i++) {
         const row = Math.floor(Math.random() * rows);
@@ -181,17 +216,31 @@ export function ShowcaseHashBackground() {
         if (heat[i] > 0) heat[i] = Math.max(0, heat[i] - 0.012);
       }
 
+      // Continuous readout of scroll position, updated the instant it
+      // changes — no hold or throttle. An earlier version gated how often
+      // the year could change, which stopped it from tracking where you
+      // actually were during a fast scroll and read as stale.
       const totalRange = (TIMELINE_STOPS.length - 1) * CARD_SPACING;
-      const segment = totalRange / MILESTONE_YEARS.length;
-      const milestoneIndex = Math.max(
-        0,
-        Math.min(MILESTONE_YEARS.length - 1, Math.floor(store.trackX / segment))
-      );
-      const now = performance.now();
-      if (milestoneIndex !== shownIndex) {
-        currentLit = sampleLit(MILESTONE_YEARS[milestoneIndex]);
-        shownIndex = milestoneIndex;
-        scrambleUntil = now + SCRAMBLE_MS;
+      const t = totalRange > 0 ? store.trackX / totalRange : 0;
+      const yearIndex = Math.max(0, Math.min(YEARS.length - 1, Math.round(t * (YEARS.length - 1))));
+      const year = YEARS[yearIndex];
+
+      if (year !== shownYear) {
+        const fresh = slots.length !== YEAR_DIGITS;
+        for (let i = 0; i < YEAR_DIGITS; i++) {
+          const ch = year[i];
+          // Only the digits that actually changed re-resolve; the rest keep
+          // their existing cells and stay steady, which is what holds the
+          // numeral legible through a fast scroll.
+          if (fresh || slots[i].char !== ch) {
+            slots[i] = {
+              char: ch,
+              cells: sampleDigit(ch, i),
+              resolveUntil: now + RESOLVE_MS + i * LADDER_MS,
+            };
+          }
+        }
+        shownYear = year;
       }
 
       ctx!.clearRect(0, 0, w, h);
@@ -209,15 +258,21 @@ export function ShowcaseHashBackground() {
         }
       }
 
-      const scrambling = now < scrambleUntil;
-      for (const cell of currentLit) {
-        const hv = heat[cell.col + cell.row * cols] ?? 0;
-        if (scrambling) {
-          ctx!.fillStyle = "rgba(255,232,190,0.5)";
-          ctx!.fillText(HEX[Math.floor(Math.random() * 16)], cell.x, cell.y);
-        } else {
-          ctx!.fillStyle = `rgba(255,232,190,${(0.22 + hv * 0.1).toFixed(3)})`;
-          ctx!.fillText(GLYPH_PIXEL, cell.x, cell.y);
+      // A resolving digit is drawn *brighter* than a settled one, never
+      // dimmer or absent — so scrolling fast lights the numeral up rather
+      // than blinking it out.
+      for (const slot of slots) {
+        if (!slot) continue;
+        const resolving = now < slot.resolveUntil;
+        for (const cell of slot.cells) {
+          const hv = heat[cell.col + cell.row * cols] ?? 0;
+          if (resolving) {
+            ctx!.fillStyle = "rgba(255,232,190,0.52)";
+            ctx!.fillText(HEX[Math.floor(Math.random() * 16)], cell.x, cell.y);
+          } else {
+            ctx!.fillStyle = `rgba(255,232,190,${(0.22 + hv * 0.1).toFixed(3)})`;
+            ctx!.fillText(GLYPH_PIXEL, cell.x, cell.y);
+          }
         }
       }
 
