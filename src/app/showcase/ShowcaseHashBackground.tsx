@@ -4,16 +4,15 @@ import { useEffect, useRef } from "react";
 import { TIMELINE_STOPS } from "./data";
 import { CARD_SPACING, useShowcaseStoreContext } from "./useShowcaseStore";
 
-// Evenly-spaced, one year apart — cycling through all eleven real stops
-// meant some (2016/2017/2018/2019) flashed past within a couple seconds of
-// travel, so this is a steadier backdrop clock rather than tied 1:1 to
-// whichever card happens to be active.
-const MILESTONE_START = 2014;
-const MILESTONE_END = 2026;
-const MILESTONE_YEARS = Array.from(
-  { length: MILESTONE_END - MILESTONE_START + 1 },
-  (_, i) => String(MILESTONE_START + i)
-);
+// Four sparse era markers, not one per card and not one per year — the
+// actual bug behind "flickers past too fast" was never the transition's own
+// pacing, it was that a finer-grained set of milestones gave each one a
+// narrower slice of scroll distance to live in, so ordinary scrolling blew
+// through several within a second regardless of how the transition itself
+// was tuned. Four wide segments means each year is naturally on screen for
+// a real stretch of travel, so the numeral can update immediately — no
+// artificial hold needed — and still never feel like it's flickering.
+const MILESTONE_YEARS = ["2014", "2018", "2022", "2026"];
 
 // Same hex-noise language as the homepage hero (src/components/HashMatrix.tsx,
 // backgroundOnly mode) — this is a smaller, purpose-built sibling rather than
@@ -52,15 +51,6 @@ const GLYPH_PIXEL = "0";
 // and calmer than a particle flight, but still an event rather than a cut.
 const SCRAMBLE_MS = 260;
 
-// With 13 milestones spread across the full travel range, ordinary
-// scrolling could cross a segment boundary well inside a second, so the
-// numeral was re-scrambling before the last one had time to actually read —
-// flickering rather than a settled reveal. This is a floor on how often a
-// new transition can start; trackX can cross as many boundaries as it wants
-// while held, it just jumps straight to wherever it's landed once the hold
-// is up, rather than stepping through each one it skipped.
-const MIN_HOLD_MS = 1100;
-
 interface LitCell {
   x: number;
   y: number;
@@ -97,9 +87,8 @@ export function ShowcaseHashBackground() {
     let shownIndex = -1;
     let currentLit: LitCell[] = [];
     let scrambleUntil = 0;
-    let lastChangeAt = 0;
 
-    // EB Garamond for the numeral stencil specifically (not the ambient
+    // Archivo Black for the numeral stencil specifically (not the ambient
     // field, which stays Courier New to keep the hex-code look) — canvas
     // ctx.font needs the actual family loaded before it'll draw with it, so
     // fetch the stylesheet and wait on it rather than assuming it's ready.
@@ -199,11 +188,10 @@ export function ShowcaseHashBackground() {
         Math.min(MILESTONE_YEARS.length - 1, Math.floor(store.trackX / segment))
       );
       const now = performance.now();
-      if (milestoneIndex !== shownIndex && (shownIndex === -1 || now - lastChangeAt >= MIN_HOLD_MS)) {
+      if (milestoneIndex !== shownIndex) {
         currentLit = sampleLit(MILESTONE_YEARS[milestoneIndex]);
         shownIndex = milestoneIndex;
         scrambleUntil = now + SCRAMBLE_MS;
-        lastChangeAt = now;
       }
 
       ctx!.clearRect(0, 0, w, h);
