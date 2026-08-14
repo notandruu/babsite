@@ -45,6 +45,13 @@ const GLYPH_FONT_FRAC = 0.4;
 // silhouette carries the shape.
 const GLYPH_PIXEL = "0";
 
+// A pure instant swap read as flat and mechanical — like a plain counter
+// ticking up rather than something built out of this page's own material.
+// This brief window of the lit cells flickering through random hex before
+// settling on the steady glyph is a "decoding" beat, not motion — cheaper
+// and calmer than a particle flight, but still an event rather than a cut.
+const SCRAMBLE_MS = 220;
+
 interface LitCell {
   x: number;
   y: number;
@@ -80,6 +87,7 @@ export function ShowcaseHashBackground() {
 
     let shownIndex = -1;
     let currentLit: LitCell[] = [];
+    let scrambleUntil = 0;
 
     // EB Garamond for the numeral stencil specifically (not the ambient
     // field, which stays Courier New to keep the hex-code look) — canvas
@@ -183,6 +191,7 @@ export function ShowcaseHashBackground() {
       if (milestoneIndex !== shownIndex) {
         currentLit = sampleLit(MILESTONE_YEARS[milestoneIndex]);
         shownIndex = milestoneIndex;
+        scrambleUntil = performance.now() + SCRAMBLE_MS;
       }
 
       ctx!.clearRect(0, 0, w, h);
@@ -200,10 +209,16 @@ export function ShowcaseHashBackground() {
         }
       }
 
+      const scrambling = performance.now() < scrambleUntil;
       for (const cell of currentLit) {
         const hv = heat[cell.col + cell.row * cols] ?? 0;
-        ctx!.fillStyle = `rgba(255,232,190,${(0.22 + hv * 0.1).toFixed(3)})`;
-        ctx!.fillText(GLYPH_PIXEL, cell.x, cell.y);
+        if (scrambling) {
+          ctx!.fillStyle = "rgba(255,232,190,0.5)";
+          ctx!.fillText(HEX[Math.floor(Math.random() * 16)], cell.x, cell.y);
+        } else {
+          ctx!.fillStyle = `rgba(255,232,190,${(0.22 + hv * 0.1).toFixed(3)})`;
+          ctx!.fillText(GLYPH_PIXEL, cell.x, cell.y);
+        }
       }
 
       raf = requestAnimationFrame(animate);
