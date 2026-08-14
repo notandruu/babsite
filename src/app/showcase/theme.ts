@@ -1,13 +1,28 @@
 /**
- * Design tokens for the showcase page's 3D card scene. Single source of
- * truth for card geometry, typography, color, and the spacing scale — no
- * positioning magic numbers should live in ShowcaseScene.tsx itself.
+ * Design tokens for the showcase page — both the 3D card scene and (via
+ * the mirrored custom properties documented below) the DOM HUD. Typography
+ * and color intentionally match the main site's actual conventions
+ * (see src/app/page.tsx, src/components/Navbar.tsx, globals.css):
+ * Instrument Sans everywhere, white text at a small set of opacity steps,
+ * gold (#fecb33) reserved for accents/CTAs, near-black surfaces.
  *
  * DOM-side tokens (showcase.module.css) mirror the COLOR values below by
  * hand — CSS can't import these directly without a build-time step, so if
  * you change a color here, update the matching custom property in
  * showcase.module.css's `.stage` block too.
  */
+
+export const FONT = {
+  // Same family the rest of the site loads via next/font (--font-instrument-sans).
+  // troika-three-text needs an actual font file URL rather than a CSS
+  // variable, so this is a self-hosted copy of the same Google Font — see
+  // public/fonts/InstrumentSans-Variable.ttf. It's a variable font; troika
+  // renders its default named instance (Regular) since troika doesn't
+  // expose variation-axis selection, so card type doesn't get a distinct
+  // bold/medium weight the way the DOM chrome can — size and color carry
+  // the hierarchy instead.
+  sans: "/fonts/InstrumentSans-Variable.ttf",
+} as const;
 
 export const CARD = {
   width: 3.2,
@@ -35,54 +50,60 @@ export const SPACE = {
   xl: 0.22,
 } as const;
 
-// JetBrains Mono is fixed-width; this is its measured horizontal advance as
-// a fraction of font size. Because it's monospace, wrapped line count is
-// predictable from character count alone — no async text-measurement pass
-// needed before we can lay out the rest of the card around it.
-export const MONO_ADVANCE_RATIO = 0.6;
-// Safety margin subtracted from the raw fit estimate: troika wraps on word
-// boundaries, so a line can end up slightly shorter than the raw
-// characters-per-line math suggests. Biasing down means we reserve slightly
-// more space than strictly needed rather than risk an overlap.
-const WRAP_SAFETY = 0.92;
+// Instrument Sans is proportional, not fixed-width, so unlike a monospace
+// face its wrap point can't be read exactly off character count — but it
+// doesn't have to be a guess either. This is the *measured* average glyph
+// advance width (as a fraction of font size), extracted directly from
+// public/fonts/InstrumentSans-Variable.ttf's hmtx/cmap tables over a
+// representative English sample ("The quick brown fox...", plus a few
+// actual card titles): raw average ~0.47, capital-heavy words (e.g.
+// "ETHGlobal") ran up to ~0.55. This constant is set above that observed
+// range so the line-fit estimate stays a safe upper bound rather than an
+// average that some titles would exceed.
+export const AVG_ADVANCE_RATIO = 0.52;
+// Additional margin on top of AVG_ADVANCE_RATIO: troika wraps on word
+// boundaries and this is only an average (not exact, as it would be for a
+// monospace font), so bias down further to keep reserving enough space
+// rather than risk underestimating and reproducing the overlap bug.
+const WRAP_SAFETY = 0.85;
 
 export const TYPE = {
-  kicker: { size: 0.086, letterSpacing: 0.06, lineHeight: 1.3 },
+  kicker: { size: 0.086, letterSpacing: 0.05, lineHeight: 1.3, fillOpacity: 0.6 },
   // `size` is the largest step in the fluid title scale (see
   // pickTitleFontSize) — also the height reserved in the card's vertical
   // layout for the title, regardless of which step actually gets used, so
   // every card's screen area lines up in the same place.
-  title: { size: 0.165, lineHeight: 1.25, steps: [0.165, 0.145, 0.125, 0.108] },
-  tag: { size: 0.07, lineHeight: 1.2 },
+  title: { size: 0.165, lineHeight: 1.2, steps: [0.165, 0.145, 0.125, 0.108], fillOpacity: 1 },
+  tag: { size: 0.068, lineHeight: 1.2, fillOpacity: 0.45 },
   glyph: { size: 0.42, lineHeight: 1 },
 } as const;
 
 export const COLOR = {
-  inkDark: "#2b1a10",
-  inkDarker: "#221407",
-  inkTag: "#3a2712",
-  paper: "#f5ead9",
-  paperMuted: "#c7b6a2",
-  paperTag: "#b7a68f",
+  // Matches --color-gold / --color-surface in globals.css exactly.
   gold: "#fecb33",
-  cardActive: "#c99a3d",
-  cardInactive: "#171310",
-  screenBacking: "#0c0906",
+  surface: "#0c0c0c",
+  white: "#ffffff",
+  screenBacking: "#0c0c0c",
+  // Active-card material: gold gradient hitting the exact site gold at its
+  // brightest, same spirit as the site's bg-gold CTA buttons. Inactive
+  // cards use neutral dark-grays matching --color-border/--color-border-nav
+  // instead of a tinted "ink" — the site's own dark surfaces are neutral,
+  // not warm.
   activeSkinStops: [
-    [0, "#e8c874"],
-    [0.5, "#c99a3d"],
-    [1, "#2f2210"],
+    [0, "#ffe17a"],
+    [0.55, "#fecb33"],
+    [1, "#3a2c08"],
   ] as Array<[number, string]>,
   inactiveSkinStops: [
-    [0, "#221c15"],
-    [0.6, "#181310"],
-    [1, "#0e0b09"],
+    [0, "#232323"],
+    [0.6, "#1a1a1a"],
+    [1, "#0c0c0c"],
   ] as Array<[number, string]>,
 } as const;
 
-/** Upper-bound estimate of wrapped line count for fixed-width text. */
+/** Upper-bound estimate of wrapped line count. See AVG_ADVANCE_RATIO. */
 function estimateWrappedLines(text: string, fontSize: number, maxWidth: number): number {
-  const charWidth = fontSize * MONO_ADVANCE_RATIO;
+  const charWidth = fontSize * AVG_ADVANCE_RATIO;
   const charsPerLine = Math.max(1, Math.floor((maxWidth / charWidth) * WRAP_SAFETY));
   return Math.max(1, Math.ceil(text.length / charsPerLine));
 }

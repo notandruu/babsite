@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { Volume2, VolumeX } from "lucide-react";
+import { Logo } from "@/components/Logo";
+import { ArrowIcon } from "@/components/ArrowIcon";
 import { TIMELINE_STOPS } from "./data";
 import { CARD_SPACING, useShowcaseStoreContext } from "./useShowcaseStore";
 import { useShowcaseSound } from "./useShowcaseSound";
@@ -45,14 +47,17 @@ export function ShowcaseHud() {
           </div>
           <div className={styles.escBackWrap}>
             <button type="button" className={styles.escBack} onClick={() => store.exitFocus()}>
-              [esc] back
+              ← Back
             </button>
           </div>
         </div>
 
         <div className={styles.metaTop}>
+          <Link href="/" className={styles.logoLink} aria-label="Blockchain at Berkeley home">
+            <Logo />
+          </Link>
           <Link href="/" className={styles.backLink}>
-            ← BAB
+            ← Home
           </Link>
           <button
             type="button"
@@ -76,8 +81,8 @@ export function ShowcaseHud() {
           <p className={styles.focusDesc}>{focusedStop.description}</p>
           <Link href={focusedStop.href} className={styles.openLink}>
             Open {focusedStop.title}
-            <span className={styles.openArrow} aria-hidden="true">
-              →
+            <span className={styles.openArrow}>
+              <ArrowIcon dark />
             </span>
           </Link>
         </div>

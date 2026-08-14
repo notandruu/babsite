@@ -6,10 +6,7 @@ import { RoundedBox, Text, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { TIMELINE_STOPS, type TimelineStop } from "./data";
 import { CARD_SPACING, useShowcaseStoreContext, type ShowcaseSnapshot } from "./useShowcaseStore";
-import { CARD, COLOR, TYPE, computeCardLayout, pickTitleFontSize } from "./theme";
-
-const FONT_REGULAR = "/fonts/JetBrainsMono-Regular.ttf";
-const FONT_MEDIUM = "/fonts/JetBrainsMono-Medium.ttf";
+import { CARD, COLOR, FONT, TYPE, computeCardLayout, pickTitleFontSize } from "./theme";
 
 // Same for every card by construction (see computeCardLayout) — computed
 // once rather than per-card.
@@ -106,7 +103,7 @@ function CardGlyphScreen({ glyph }: { glyph: string }) {
         <meshBasicMaterial color={COLOR.screenBacking} toneMapped={false} />
       </mesh>
       <Text
-        font={FONT_MEDIUM}
+        font={FONT.sans}
         fontSize={TYPE.glyph.size}
         lineHeight={TYPE.glyph.lineHeight}
         color={COLOR.gold}
@@ -201,11 +198,11 @@ function TimelineCard({
       >
         <meshStandardMaterial
           ref={boxMatRef}
-          color={isActive ? COLOR.cardActive : COLOR.cardInactive}
+          color={isActive ? COLOR.gold : COLOR.surface}
           map={isActive ? activeSkin : inactiveSkin}
           roughness={0.55}
           metalness={0.2}
-          emissive={new THREE.Color("#ffb23d")}
+          emissive={new THREE.Color(COLOR.gold)}
           emissiveIntensity={0}
         />
       </RoundedBox>
@@ -218,26 +215,31 @@ function TimelineCard({
         )}
       </Suspense>
 
+      {/* Text hierarchy matches the main site's convention: white at a few
+          fixed opacity steps, full-strength surface-black when on the gold
+          skin (same pairing as the site's bg-gold CTA buttons). */}
       <Text
-        font={FONT_REGULAR}
+        font={FONT.sans}
         position={[TEXT_LEFT_X, LAYOUT.kickerY, FRONT_Z]}
         fontSize={TYPE.kicker.size}
         lineHeight={TYPE.kicker.lineHeight}
         anchorX="left"
         anchorY="middle"
-        color={useDarkText ? COLOR.inkDark : COLOR.paperMuted}
+        color={useDarkText ? COLOR.surface : COLOR.white}
+        fillOpacity={useDarkText ? 0.75 : TYPE.kicker.fillOpacity}
         letterSpacing={TYPE.kicker.letterSpacing}
       >
         {stop.kicker}
       </Text>
       <Text
-        font={FONT_MEDIUM}
+        font={FONT.sans}
         position={[TEXT_LEFT_X, LAYOUT.titleY, FRONT_Z]}
         fontSize={titleFontSize}
         lineHeight={TYPE.title.lineHeight}
         anchorX="left"
         anchorY="middle"
-        color={useDarkText ? COLOR.inkDarker : COLOR.paper}
+        color={useDarkText ? COLOR.surface : COLOR.white}
+        fillOpacity={TYPE.title.fillOpacity}
         maxWidth={TEXT_MAX_WIDTH}
       >
         {stop.title}
@@ -247,13 +249,14 @@ function TimelineCard({
         {stop.tags.slice(0, 3).map((tag, i) => (
           <Text
             key={tag}
-            font={FONT_REGULAR}
+            font={FONT.sans}
             position={[i * 0.98, 0, 0]}
             fontSize={TYPE.tag.size}
             lineHeight={TYPE.tag.lineHeight}
             anchorX="left"
             anchorY="middle"
-            color={useDarkText ? COLOR.inkTag : COLOR.paperTag}
+            color={useDarkText ? COLOR.surface : COLOR.white}
+            fillOpacity={useDarkText ? 0.6 : TYPE.tag.fillOpacity}
           >
             {tag}
           </Text>
