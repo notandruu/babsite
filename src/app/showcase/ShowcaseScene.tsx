@@ -300,7 +300,7 @@ function TimelineCard({
     // own face — the classic vanilla-tilt.js read, "the card faces you"),
     // and idle (the static per-card fan + orientation quirk from render).
     const focusTiltMax = 0.1; // ~5.7°, subtle — card already fills the frame
-    const hoverTiltMax = 0.34; // ~19.5°, deliberately strong — this is the primary interactive cue on a card the user hasn't focused yet
+    const hoverTiltMax = 0.16; // ~9.2°, noticeable but not disorienting
     const baseFan = offset * -0.16;
     let tiltX: number;
     let tiltY: number;
@@ -354,7 +354,18 @@ function TimelineCard({
         }}
         onPointerMove={(e) => {
           e.stopPropagation();
-          if (e.uv) hoverLocalRef.current = { x: e.uv.x - 0.5, y: e.uv.y - 0.5 };
+          // World-space offset from the card's own center, normalized to
+          // roughly -1..1 across its face — not e.uv, whose V-axis
+          // orientation on RoundedBox's generated geometry doesn't match
+          // "up" here and was flipping the tilt vertically.
+          const group = groupRef.current;
+          if (!group) return;
+          const localX = (e.point.x - group.position.x) / (CARD.width / 2);
+          const localY = (e.point.y - group.position.y) / (CARD.height / 2);
+          hoverLocalRef.current = {
+            x: THREE.MathUtils.clamp(localX, -1, 1),
+            y: THREE.MathUtils.clamp(localY, -1, 1),
+          };
         }}
         onPointerOut={() => {
           document.body.style.cursor = "auto";

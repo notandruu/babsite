@@ -27,10 +27,14 @@ export const FONT = {
 export const CARD = {
   width: 3.2,
   height: 1.9,
-  depth: 0.16,
+  // Thick enough that the side faces read clearly once a card is tilted
+  // (fan angle, hover, or the per-card orientation bias) — a thin slab
+  // just looks like a flat plane rotating in place instead of an object
+  // with volume.
+  depth: 0.34,
   // RoundedBox bevel radius must stay under half the smallest dimension
   // (depth) or the geometry degenerates — see ShowcaseScene.tsx history.
-  radius: 0.055,
+  radius: 0.1,
   padding: 0.16, // inset from the card edge for all text/content
   // Contain-fit box for the "screen" image — width capped here; height is
   // whatever computeCardLayout() works out is left over after kicker/title/
