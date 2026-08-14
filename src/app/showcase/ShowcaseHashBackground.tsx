@@ -97,6 +97,25 @@ interface LitCell {
   col: number;
 }
 
+/**
+ * Loads the numeral's font once, shared. Canvas `ctx.font` silently falls
+ * back if the family isn't resolvable yet, so without awaiting this the
+ * year first paints in Arial Black and then visibly re-flows when Archivo
+ * Black arrives. ShowcaseExperience awaits the same promise before
+ * revealing the page, which is what keeps that swap off screen.
+ */
+let numeralFontPromise: Promise<unknown> | null = null;
+export function loadNumeralFont(): Promise<unknown> {
+  if (numeralFontPromise) return numeralFontPromise;
+  if (typeof document === "undefined") return Promise.resolve();
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = "https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap";
+  document.head.appendChild(link);
+  numeralFontPromise = document.fonts.load('400 40px "Archivo Black"').catch(() => {});
+  return numeralFontPromise;
+}
+
 interface DigitSlot {
   char: string;
   cells: LitCell[];
@@ -137,19 +156,10 @@ export function ShowcaseHashBackground() {
     let slots: DigitSlot[] = [];
 
     // Archivo Black for the numeral stencil specifically (not the ambient
-    // field, which stays Courier New to keep the hex-code look) — canvas
-    // ctx.font needs the actual family loaded before it'll draw with it, so
-    // fetch the stylesheet and wait on it rather than assuming it's ready.
-    const fontLink = document.createElement("link");
-    fontLink.rel = "stylesheet";
-    fontLink.href = "https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap";
-    document.head.appendChild(fontLink);
-    document.fonts
-      .load('400 40px "Archivo Black"')
-      .then(() => {
-        shownYear = ""; // force a re-sample now that the real font is ready
-      })
-      .catch(() => {});
+    // field, which stays Courier New to keep the hex-code look).
+    loadNumeralFont().then(() => {
+      shownYear = ""; // re-sample in case this resolved after first paint
+    });
 
     function resize() {
       const w = window.innerWidth;

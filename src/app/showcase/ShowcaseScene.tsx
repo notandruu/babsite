@@ -420,13 +420,16 @@ function TimelineCard({
         />
       </RoundedBox>
 
-      <Suspense fallback={null}>
-        {stop.image ? (
-          <CardScreen stop={stop} />
-        ) : (
-          <CardGlyphScreen glyph={stop.type === "cta" ? "→" : stop.year} />
-        )}
-      </Suspense>
+      {/* No Suspense boundary here on purpose — a per-card boundary let each
+          card's screen resolve independently, so on a cold load the images
+          popped in one at a time in whatever order they finished decoding.
+          One boundary around the whole row (see ShowcaseScene) makes it
+          all-or-nothing instead. */}
+      {stop.image ? (
+        <CardScreen stop={stop} />
+      ) : (
+        <CardGlyphScreen glyph={stop.type === "cta" ? "→" : stop.year} />
+      )}
 
       {/* Text hierarchy matches the main site's convention: white at a few
           fixed opacity steps, full-strength surface-black when on the gold
@@ -527,6 +530,34 @@ function CameraRig() {
   return null;
 }
 
+/**
+ * Reports the one moment that actually matters for revealing the page: the
+ * scene is painting real frames at its real size. Mounted *inside* the
+ * cards' Suspense boundary, so it can't run until every card texture has
+ * resolved — which folds "textures ready" into the same signal.
+ *
+ * Waiting on asset promises instead turned out to be unreliable: a stalled
+ * font CDN left them pending, and R3F mounts its canvas at the HTML default
+ * 300x150 for a frame or two before laying it out, so a promise-based gate
+ * could fire while the canvas was still unsized and let the resize pop
+ * through anyway.
+ */
+function SceneReadySignal({ onReady }: { onReady?: () => void }) {
+  const { gl } = useThree();
+  const frames = useRef(0);
+  const fired = useRef(false);
+
+  useFrame(() => {
+    if (fired.current || !onReady) return;
+    if (gl.domElement.width <= 300) return; // still at the default size
+    if (++frames.current < 2) return; // one full frame actually painted
+    fired.current = true;
+    onReady();
+  });
+
+  return null;
+}
+
 function PhysicsDriver() {
   const store = useShowcaseStoreContext();
   useFrame((_, delta) => {
@@ -535,7 +566,7 @@ function PhysicsDriver() {
   return null;
 }
 
-export function ShowcaseScene() {
+export function ShowcaseScene({ onReady }: { onReady?: () => void }) {
   // Shared across all cards — only the active card ever samples the active
   // skin, so one texture each (not one per card) keeps the GPU footprint down.
   const activeSkin = useActiveSkinTexture();
@@ -552,9 +583,13 @@ export function ShowcaseScene() {
       <CameraRig />
       <TimelineTrack />
 
-      {TIMELINE_STOPS.map((stop, i) => (
-        <TimelineCard key={stop.id} stop={stop} index={i} activeSkin={activeSkin} inactiveSkin={inactiveSkin} />
-      ))}
+      {/* One boundary for the whole row so every card appears together. */}
+      <Suspense fallback={null}>
+        {TIMELINE_STOPS.map((stop, i) => (
+          <TimelineCard key={stop.id} stop={stop} index={i} activeSkin={activeSkin} inactiveSkin={inactiveSkin} />
+        ))}
+        <SceneReadySignal onReady={onReady} />
+      </Suspense>
     </>
   );
 }
