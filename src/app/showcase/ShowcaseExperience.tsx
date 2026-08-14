@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { ShowcaseScene } from "./ShowcaseScene";
 import { ShowcaseHud } from "./ShowcaseHud";
+import { ShowcaseHashBackground } from "./ShowcaseHashBackground";
 import { ShowcaseStore, ShowcaseStoreContext } from "./useShowcaseStore";
 import { TIMELINE_STOPS } from "./data";
 
@@ -82,6 +83,7 @@ export function ShowcaseExperience() {
               "radial-gradient(90% 70% at 82% 108%, rgba(254,203,51,0.16), rgba(0,0,0,0) 60%), radial-gradient(120% 90% at 10% -10%, rgba(254,203,51,0.1), rgba(0,0,0,0) 55%), #0c0c0c",
           }}
         />
+        <ShowcaseHashBackground />
         <Canvas
           key={canvasKey}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useRef, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { RoundedBox, Text, useTexture } from "@react-three/drei";
 import * as THREE from "three";
@@ -56,6 +56,67 @@ const FOCUS_CAMERA = solveFocusCamera(0.08, 0.6);
 function useSnapshot(): ShowcaseSnapshot {
   const store = useShowcaseStoreContext();
   return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+}
+
+/** Deterministic pseudo-random value in [-1, 1] — stable per input, no state
+ * or Math.random(), so a card's orientation quirk never jitters frame to
+ * frame or re-randomizes on remount. */
+function pseudoRandom(n: number): number {
+  const s = Math.sin(n * 12.9898) * 43758.5453;
+  return (s - Math.floor(s)) * 2 - 1;
+}
+
+// Track runs the full length of the card row plus some overrun on both ends.
+const TRACK_Y = -CARD.height / 2 - 0.24;
+const TRACK_DOT_SPACING = 0.34;
+const TRACK_OVERRUN = CARD_SPACING * 0.6;
+
+/** Ground-level dotted timeline track under the cards, with a year label at
+ * each stop — instanced so the ~120 tick dots are one draw call. */
+function TimelineTrack() {
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+
+  const dotPositions = useMemo(() => {
+    const start = -TRACK_OVERRUN;
+    const end = (TIMELINE_STOPS.length - 1) * CARD_SPACING + TRACK_OVERRUN;
+    const count = Math.floor((end - start) / TRACK_DOT_SPACING);
+    return Array.from({ length: count + 1 }, (_, i) => start + i * TRACK_DOT_SPACING);
+  }, []);
+
+  useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    const dummy = new THREE.Object3D();
+    dotPositions.forEach((x, i) => {
+      dummy.position.set(x, 0, 0);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+  }, [dotPositions]);
+
+  return (
+    <group position={[0, TRACK_Y, FRONT_Z - 0.04]}>
+      <instancedMesh ref={meshRef} args={[undefined, undefined, dotPositions.length]}>
+        <circleGeometry args={[0.013, 8]} />
+        <meshBasicMaterial color={COLOR.white} transparent opacity={0.22} toneMapped={false} />
+      </instancedMesh>
+      {TIMELINE_STOPS.map((stop, i) => (
+        <Text
+          key={stop.id}
+          font={FONT.sans}
+          position={[i * CARD_SPACING, -0.15, 0]}
+          fontSize={0.09}
+          anchorX="center"
+          anchorY="middle"
+          color={COLOR.white}
+          fillOpacity={0.5}
+        >
+          {stop.year}
+        </Text>
+      ))}
+    </group>
+  );
 }
 
 /**
@@ -196,6 +257,17 @@ function TimelineCard({
   // line, so longer titles shrink instead of wrapping into the reserved
   // (single-line-height) slot above the screen. See theme.ts.
   const titleFontSize = useMemo(() => pickTitleFontSize(stop.title, TEXT_MAX_WIDTH), [stop.title]);
+  // Fixed per-card orientation quirk layered on top of the distance-based
+  // fan below, so neighboring cards read as individually placed rather than
+  // a uniform mirrored curve — deterministic (not Math.random()) so it's
+  // stable across renders instead of reshuffling.
+  const orientationBias = useMemo(
+    () => ({
+      yaw: pseudoRandom(index * 3.1 + 1) * 0.22,
+      roll: pseudoRandom(index * 7.7 + 4) * 0.05,
+    }),
+    [index]
+  );
 
   useFrame((state, delta) => {
     const group = groupRef.current;
@@ -222,9 +294,14 @@ function TimelineCard({
     // normalized pointer rather than any manual mousemove wiring.
     const tiltMax = 0.1; // ~5.7°, subtle
     const tiltX = liveIsFocused ? -state.pointer.y * tiltMax : 0;
-    const tiltY = liveIsFocused ? state.pointer.x * tiltMax : THREE.MathUtils.clamp(offset * -0.16, -0.6, 0.6);
+    const baseFan = offset * -0.16;
+    const tiltY = liveIsFocused
+      ? state.pointer.x * tiltMax
+      : THREE.MathUtils.clamp(baseFan + orientationBias.yaw, -0.85, 0.85);
+    const tiltZ = liveIsFocused ? 0 : orientationBias.roll;
     group.rotation.x = THREE.MathUtils.damp(group.rotation.x, tiltX, 6, delta);
     group.rotation.y = THREE.MathUtils.damp(group.rotation.y, tiltY, 7, delta);
+    group.rotation.z = THREE.MathUtils.damp(group.rotation.z, tiltZ, 6, delta);
 
     const liftTarget = liveIsFocused ? FOCUSED_CARD_LIFT : 0;
     group.position.y = THREE.MathUtils.damp(group.position.y, liftTarget, 4.5, delta);
@@ -392,6 +469,7 @@ export function ShowcaseScene() {
 
       <PhysicsDriver />
       <CameraRig />
+      <TimelineTrack />
 
       {TIMELINE_STOPS.map((stop, i) => (
         <TimelineCard key={stop.id} stop={stop} index={i} activeSkin={activeSkin} inactiveSkin={inactiveSkin} />
