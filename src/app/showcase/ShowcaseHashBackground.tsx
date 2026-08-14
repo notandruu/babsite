@@ -50,7 +50,16 @@ const GLYPH_PIXEL = "0";
 // This brief window of the lit cells flickering through random hex before
 // settling on the steady glyph is a "decoding" beat, not motion — cheaper
 // and calmer than a particle flight, but still an event rather than a cut.
-const SCRAMBLE_MS = 220;
+const SCRAMBLE_MS = 260;
+
+// With 13 milestones spread across the full travel range, ordinary
+// scrolling could cross a segment boundary well inside a second, so the
+// numeral was re-scrambling before the last one had time to actually read —
+// flickering rather than a settled reveal. This is a floor on how often a
+// new transition can start; trackX can cross as many boundaries as it wants
+// while held, it just jumps straight to wherever it's landed once the hold
+// is up, rather than stepping through each one it skipped.
+const MIN_HOLD_MS = 1100;
 
 interface LitCell {
   x: number;
@@ -88,6 +97,7 @@ export function ShowcaseHashBackground() {
     let shownIndex = -1;
     let currentLit: LitCell[] = [];
     let scrambleUntil = 0;
+    let lastChangeAt = 0;
 
     // EB Garamond for the numeral stencil specifically (not the ambient
     // field, which stays Courier New to keep the hex-code look) — canvas
@@ -188,10 +198,12 @@ export function ShowcaseHashBackground() {
         0,
         Math.min(MILESTONE_YEARS.length - 1, Math.floor(store.trackX / segment))
       );
-      if (milestoneIndex !== shownIndex) {
+      const now = performance.now();
+      if (milestoneIndex !== shownIndex && (shownIndex === -1 || now - lastChangeAt >= MIN_HOLD_MS)) {
         currentLit = sampleLit(MILESTONE_YEARS[milestoneIndex]);
         shownIndex = milestoneIndex;
-        scrambleUntil = performance.now() + SCRAMBLE_MS;
+        scrambleUntil = now + SCRAMBLE_MS;
+        lastChangeAt = now;
       }
 
       ctx!.clearRect(0, 0, w, h);
@@ -209,7 +221,7 @@ export function ShowcaseHashBackground() {
         }
       }
 
-      const scrambling = performance.now() < scrambleUntil;
+      const scrambling = now < scrambleUntil;
       for (const cell of currentLit) {
         const hv = heat[cell.col + cell.row * cols] ?? 0;
         if (scrambling) {
