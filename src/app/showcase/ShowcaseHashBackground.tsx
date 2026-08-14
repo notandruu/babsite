@@ -2,12 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import { TIMELINE_STOPS } from "./data";
-import { CARD_SPACING, useShowcaseStoreContext } from "./useShowcaseStore";
+import { useShowcaseStoreContext } from "./useShowcaseStore";
 
 // Same hex-noise language as the homepage hero (src/components/HashMatrix.tsx,
 // backgroundOnly mode) — this is a smaller, purpose-built sibling rather than
 // a shared import, since it also needs to weave in real timeline years and
-// track store.trackX, neither of which the homepage version knows about.
+// react to store.activeIndex, neither of which the homepage version knows about.
 const HEX = "0123456789abcdef";
 function randomHex(len: number) {
   let s = "";
@@ -20,11 +20,10 @@ function buildLine(cols: number) {
   return line.slice(0, cols);
 }
 
-// Rough world-unit-to-pixel scale for the parallax years — not the actual
-// camera projection (that depends on fov/distance/viewport and would be
-// overkill for a decorative wash), just enough to make the giant year marks
-// drift in the right direction and rough proportion as the camera travels.
-const WORLD_TO_PX = 90;
+// How long the digit-scramble plays before the real year resolves — a snap,
+// not a fade, echoing the homepage's morph feeling "assembled" rather than
+// dissolved.
+const SCRAMBLE_MS = 220;
 
 export function ShowcaseHashBackground() {
   const store = useShowcaseStoreContext();
@@ -44,6 +43,18 @@ export function ShowcaseHashBackground() {
     let lines: string[] = [];
     let heat = new Float32Array(0);
     let raf = 0;
+    // Offscreen canvas at exactly one pixel per character cell (cols x rows,
+    // not screen pixels) — same trick HashMatrix uses to sample where a 3D
+    // model lands on the character grid, but here it's a year numeral
+    // rendered directly at grid resolution. Sampling its alpha per cell is
+    // what lets the numeral's shape be "drawn" using the hash characters
+    // themselves, rather than painted as a flat shape on top of them.
+    let glyphCanvas: HTMLCanvasElement | null = null;
+    let glyphCtx: CanvasRenderingContext2D | null = null;
+    let glyphData: Uint8ClampedArray | null = null;
+
+    let shownIndex = -1;
+    let scrambleUntil = 0;
 
     function resize() {
       const w = window.innerWidth;
@@ -61,9 +72,28 @@ export function ShowcaseHashBackground() {
       rows = Math.ceil(h / LINE_HEIGHT);
       lines = Array.from({ length: rows }, () => buildLine(cols));
       heat = new Float32Array(cols * rows);
+
+      glyphCanvas = document.createElement("canvas");
+      glyphCanvas.width = cols;
+      glyphCanvas.height = rows;
+      glyphCtx = glyphCanvas.getContext("2d");
+      shownIndex = -1; // force a redraw of the stencil at the new resolution
     }
     resize();
     window.addEventListener("resize", resize);
+
+    function redrawGlyph(index: number) {
+      if (!glyphCtx || !glyphCanvas) return;
+      glyphCtx.clearRect(0, 0, cols, rows);
+      glyphCtx.fillStyle = "#fff";
+      glyphCtx.textAlign = "center";
+      glyphCtx.textBaseline = "middle";
+      // Kept modest and letter-spaced rather than filling the frame edge to
+      // edge — a giant numeral read as too tall/heavy for this site.
+      glyphCtx.font = `600 ${Math.round(rows * 0.46)}px "Courier New", monospace`;
+      glyphCtx.fillText(TIMELINE_STOPS[index].year, cols / 2, rows / 2);
+      glyphData = glyphCtx.getImageData(0, 0, cols, rows).data;
+    }
 
     function animate() {
       const w = window.innerWidth;
@@ -84,6 +114,18 @@ export function ShowcaseHashBackground() {
         if (heat[i] > 0) heat[i] = Math.max(0, heat[i] - 0.012);
       }
 
+      // Exactly one year on screen, tied to the active stop (not a
+      // continuously-interpolated travel position) — it snaps the instant
+      // the active card changes, then plays a brief scramble instead of
+      // cross-fading between two numerals.
+      const activeIndex = store.getSnapshot().activeIndex;
+      if (activeIndex !== shownIndex) {
+        shownIndex = activeIndex;
+        redrawGlyph(shownIndex);
+        scrambleUntil = performance.now() + SCRAMBLE_MS;
+      }
+      const scrambling = performance.now() < scrambleUntil;
+
       ctx!.clearRect(0, 0, w, h);
       ctx!.textBaseline = "top";
       ctx!.font = `${FONT_SIZE}px "Courier New", monospace`;
@@ -94,24 +136,24 @@ export function ShowcaseHashBackground() {
           const ch = line[col];
           if (!ch || ch === " ") continue;
           const hv = heat[col + row * cols] ?? 0;
-          ctx!.fillStyle = `rgba(255,255,255,${(0.045 + hv * 0.16).toFixed(3)})`;
-          ctx!.fillText(ch, col * charW, row * LINE_HEIGHT);
+          const gi = (row * cols + col) * 4;
+          const glyphAlpha = glyphData ? glyphData[gi + 3] / 255 : 0;
+          if (glyphAlpha > 0.15) {
+            // Inside the numeral's silhouette — brighter, gold-tinted, so
+            // the year reads clearly while still being made of the same hex
+            // characters as the rest of the field. Mid-scramble it flickers
+            // through random hex instead of holding still, which is what
+            // sells the snap rather than a soft dissolve.
+            const drawCh = scrambling ? HEX[Math.floor(Math.random() * 16)] : ch;
+            const intensity = scrambling ? 0.55 : 0.16 + glyphAlpha * 0.3 + hv * 0.12;
+            ctx!.fillStyle = `rgba(254,203,51,${intensity.toFixed(3)})`;
+            ctx!.fillText(drawCh, col * charW, row * LINE_HEIGHT);
+          } else {
+            ctx!.fillStyle = `rgba(255,255,255,${(0.035 + hv * 0.14).toFixed(3)})`;
+            ctx!.fillText(ch, col * charW, row * LINE_HEIGHT);
+          }
         }
       }
-
-      // Giant faded years, drifting with camera travel — the "years inside
-      // the background" reference cue, rendered in the same monospace hash
-      // language as the rest of the scene instead of a separate typeface.
-      const originPx = w * 0.5 - store.trackX * WORLD_TO_PX;
-      ctx!.textAlign = "center";
-      ctx!.font = `700 ${Math.min(w, h) * 0.32}px "Courier New", monospace`;
-      for (let i = 0; i < TIMELINE_STOPS.length; i++) {
-        const x = originPx + i * CARD_SPACING * WORLD_TO_PX;
-        if (x < -400 || x > w + 400) continue;
-        ctx!.fillStyle = "rgba(255,255,255,0.032)";
-        ctx!.fillText(TIMELINE_STOPS[i].year, x, h * 0.5);
-      }
-      ctx!.textAlign = "left";
 
       raf = requestAnimationFrame(animate);
     }

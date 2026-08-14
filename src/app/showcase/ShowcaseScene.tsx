@@ -247,6 +247,13 @@ function TimelineCard({
   const snap = useSnapshot();
   const groupRef = useRef<THREE.Group>(null);
   const boxMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const hoveredRef = useRef(false);
+  // Local cursor offset within this card's own face (uv space, recentered to
+  // -0.5..0.5), not the global viewport pointer — so a card tilts toward
+  // wherever on IT the cursor actually sits, the same read as vanilla-tilt.js
+  // on a DOM card, rather than every hovered card reacting identically to
+  // one global cursor position.
+  const hoverLocalRef = useRef({ x: 0, y: 0 });
 
   const isActive = snap.activeIndex === index;
   const isThisFocused = snap.focusedIndex === index;
@@ -287,21 +294,34 @@ function TimelineCard({
 
     const cardWorldX = index * CARD_SPACING;
     const offset = cardWorldX - store.trackX;
-    // While browsing, cards fan out based on distance from the traveled-to
-    // position (the "wall of cards" curve). Once focused, that fan collapses
-    // and the card instead tilts toward the cursor — the classic tilt-card
-    // hover effect (vanilla-tilt.js and friends), driven by R3F's built-in
-    // normalized pointer rather than any manual mousemove wiring.
-    const tiltMax = 0.1; // ~5.7°, subtle
-    const tiltX = liveIsFocused ? -state.pointer.y * tiltMax : 0;
+    // Three tilt regimes, in priority order: focused (tilts toward the
+    // global cursor, since it fills most of the view), hovered-while-
+    // browsing (tilts toward the cursor's position on that specific card's
+    // own face — the classic vanilla-tilt.js read, "the card faces you"),
+    // and idle (the static per-card fan + orientation quirk from render).
+    const focusTiltMax = 0.1; // ~5.7°, subtle — card already fills the frame
+    const hoverTiltMax = 0.34; // ~19.5°, deliberately strong — this is the primary interactive cue on a card the user hasn't focused yet
     const baseFan = offset * -0.16;
-    const tiltY = liveIsFocused
-      ? state.pointer.x * tiltMax
-      : THREE.MathUtils.clamp(baseFan + orientationBias.yaw, -0.85, 0.85);
-    const tiltZ = liveIsFocused ? 0 : orientationBias.roll;
-    group.rotation.x = THREE.MathUtils.damp(group.rotation.x, tiltX, 6, delta);
-    group.rotation.y = THREE.MathUtils.damp(group.rotation.y, tiltY, 7, delta);
-    group.rotation.z = THREE.MathUtils.damp(group.rotation.z, tiltZ, 6, delta);
+    let tiltX: number;
+    let tiltY: number;
+    let tiltZ: number;
+    if (liveIsFocused) {
+      tiltX = -state.pointer.y * focusTiltMax;
+      tiltY = state.pointer.x * focusTiltMax;
+      tiltZ = 0;
+    } else if (hoveredRef.current) {
+      const local = hoverLocalRef.current;
+      tiltX = -local.y * hoverTiltMax;
+      tiltY = local.x * hoverTiltMax;
+      tiltZ = orientationBias.roll * 0.3;
+    } else {
+      tiltX = 0;
+      tiltY = THREE.MathUtils.clamp(baseFan + orientationBias.yaw, -0.85, 0.85);
+      tiltZ = orientationBias.roll;
+    }
+    group.rotation.x = THREE.MathUtils.damp(group.rotation.x, tiltX, 9, delta);
+    group.rotation.y = THREE.MathUtils.damp(group.rotation.y, tiltY, 9, delta);
+    group.rotation.z = THREE.MathUtils.damp(group.rotation.z, tiltZ, 8, delta);
 
     const liftTarget = liveIsFocused ? FOCUSED_CARD_LIFT : 0;
     group.position.y = THREE.MathUtils.damp(group.position.y, liftTarget, 4.5, delta);
@@ -330,9 +350,15 @@ function TimelineCard({
         onPointerOver={(e) => {
           e.stopPropagation();
           document.body.style.cursor = "pointer";
+          hoveredRef.current = true;
+        }}
+        onPointerMove={(e) => {
+          e.stopPropagation();
+          if (e.uv) hoverLocalRef.current = { x: e.uv.x - 0.5, y: e.uv.y - 0.5 };
         }}
         onPointerOut={() => {
           document.body.style.cursor = "auto";
+          hoveredRef.current = false;
         }}
       >
         <meshStandardMaterial

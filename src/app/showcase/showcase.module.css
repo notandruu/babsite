@@ -223,41 +223,6 @@
   transform: translateX(3px);
 }
 
-.ruler {
-  position: relative;
-  width: min(600px, 80vw);
-  height: 20px;
-  overflow: hidden;
-  pointer-events: none;
-  -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
-  mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
-}
-.rulerTrack {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  height: 100%;
-  will-change: transform;
-}
-.rulerTick {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: rgba(var(--sc-white-rgb), 0.4);
-}
-.caret {
-  display: inline-block;
-  width: 6px;
-  height: 11px;
-  margin-left: 4px;
-  vertical-align: -1px;
-  background: var(--sc-gold);
-  animation: showcaseBlink 1s steps(1) infinite;
-}
-
 .dots {
   display: flex;
   gap: 0;
@@ -304,17 +269,8 @@
     transform: translateY(-8px);
   }
 }
-@keyframes showcaseBlink {
-  50% {
-    opacity: 0;
-  }
-}
-
 @media (max-width: 640px) {
   .headingSlot {
     max-width: 78vw;
-  }
-  .ruler {
-    width: 88vw;
   }
 }
