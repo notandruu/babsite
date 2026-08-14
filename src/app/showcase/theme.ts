@@ -91,14 +91,16 @@ export const COLOR = {
   // Active-card material: a soft radial glow (not a hard diagonal sweep) in
   // a deliberately *narrow* luminance range — it never gets dark enough to
   // swallow the dark ink text that sits on top of it, wherever on the card
-  // that text lands. Center hits the exact site gold, same spirit as the
-  // site's bg-gold CTA buttons. Inactive cards use neutral dark-grays
-  // matching --color-border/--color-border-nav instead of a tinted "ink" —
-  // the site's own dark surfaces are neutral, not warm.
+  // that text lands. Every stop stays inside the yellow-gold hue band (no
+  // amber/orange drift at the outer edge, which is what read as "brown"
+  // even though the center was pale) per the reference gradient. Inactive
+  // cards use neutral dark-grays matching --color-border/--color-border-nav
+  // instead of a tinted "ink" — the site's own dark surfaces are neutral,
+  // not warm.
   activeSkinStops: [
-    [0, "#fdf3d6"],
-    [0.7, "#f0c94a"],
-    [1, "#c99a2e"],
+    [0, "#fdf6dc"],
+    [0.5, "#f6d766"],
+    [1, "#e0b632"],
   ] as Array<[number, string]>,
   inactiveSkinStops: [
     [0, "#242424"],

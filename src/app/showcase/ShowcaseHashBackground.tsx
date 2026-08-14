@@ -87,10 +87,10 @@ export function ShowcaseHashBackground() {
     // fetch the stylesheet and wait on it rather than assuming it's ready.
     const fontLink = document.createElement("link");
     fontLink.rel = "stylesheet";
-    fontLink.href = "https://fonts.googleapis.com/css2?family=EB+Garamond:wght@600;700&display=swap";
+    fontLink.href = "https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap";
     document.head.appendChild(fontLink);
     document.fonts
-      .load('700 40px "EB Garamond"')
+      .load('400 40px "Archivo Black"')
       .then(() => {
         shownIndex = -1; // force a re-sample now that the real font is ready
       })
@@ -131,20 +131,18 @@ export function ShowcaseHashBackground() {
       glyphCtx.textAlign = "center";
       glyphCtx.textBaseline = "middle";
       const fontPx = Math.round(rows * GLYPH_FONT_FRAC);
-      glyphCtx.font = `700 ${fontPx}px "EB Garamond", Georgia, serif`;
+      glyphCtx.font = `400 ${fontPx}px "Archivo Black", "Arial Black", sans-serif`;
       // Digits sitting flush against each other were part of why the shape
       // read as a blob rather than four distinct characters — spacing them
       // out gives each one room to be told apart from its neighbors.
       glyphCtx.letterSpacing = `${Math.round(fontPx * 0.16)}px`;
       const x = cols / 2;
       const y = rows * GLYPH_CENTER_Y_FRAC;
-      // Stroke on top of fill to bulk up the strokes — at this small a
-      // render size a plain fill leaves most of the glyph under the
-      // anti-aliasing threshold, so the sampled shape came out as sparse,
-      // barely-legible flecks instead of a solid numeral.
-      glyphCtx.lineWidth = Math.max(1, fontPx * 0.18);
+      // No stroke pass here, unlike the thinner serif this replaced —
+      // Archivo Black is already maximum-weight, and stroking an outline on
+      // top of that filled in the counters of digits like 0/6/8/9, turning
+      // them into solid discs instead of recognizable characters.
       glyphCtx.fillText(year, x, y);
-      glyphCtx.strokeText(year, x, y);
       const data = glyphCtx.getImageData(0, 0, cols, rows).data;
       const lit: LitCell[] = [];
       for (let row = 0; row < rows; row++) {

@@ -128,7 +128,13 @@ function TimelineTrack() {
 
   return (
     <group ref={groupRef} position={[0, TRACK_Y, FRONT_Z - 0.04]}>
-      <instancedMesh ref={meshRef} args={[undefined, undefined, dotPositions.length]}>
+      {/* frustumCulled=false: an InstancedMesh's default bounding sphere
+          comes from the base geometry alone (a tiny 0.013-radius circle at
+          local origin) and isn't recomputed from the instance transforms, so
+          once the camera travels far enough from x=0 the whole track — not
+          just individual dots — gets culled as a single object even though
+          most of it is still on screen. */}
+      <instancedMesh ref={meshRef} args={[undefined, undefined, dotPositions.length]} frustumCulled={false}>
         <circleGeometry args={[0.013, 8]} />
         <meshBasicMaterial color={COLOR.white} transparent opacity={0.22} toneMapped={false} />
       </instancedMesh>
