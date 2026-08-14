@@ -96,9 +96,9 @@ export const COLOR = {
   // matching --color-border/--color-border-nav instead of a tinted "ink" —
   // the site's own dark surfaces are neutral, not warm.
   activeSkinStops: [
-    [0, "#ffedb0"],
-    [0.6, "#fecb33"],
-    [1, "#d9a536"],
+    [0, "#fdf3d6"],
+    [0.7, "#f0c94a"],
+    [1, "#c99a2e"],
   ] as Array<[number, string]>,
   inactiveSkinStops: [
     [0, "#242424"],
