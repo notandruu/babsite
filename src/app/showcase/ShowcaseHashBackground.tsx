@@ -30,21 +30,38 @@ const CREDENTIALS = [
   "12+ INDUSTRIES", "4 CONTINENTS", "EST 2014",
 ];
 
+const CREDENTIAL_RATE = 0.08; // roughly one token in twelve
+
 function randomHex(len: number) {
   let s = "";
   for (let i = 0; i < len; i++) s += HEX[Math.floor(Math.random() * 16)];
   return s;
 }
-function randomFragment() {
-  // Roughly one token in twelve, so they're a reward for looking rather
-  // than the dominant texture.
-  if (Math.random() < 0.08) return CREDENTIALS[Math.floor(Math.random() * CREDENTIALS.length)];
-  return randomHex(8);
-}
-function buildLine(cols: number) {
-  let line = "";
-  while (line.length < cols) line += randomFragment() + " ";
-  return line.slice(0, cols);
+
+/**
+ * Builds one row of the field and reports which column ranges hold
+ * credential text, so those cells can be exempted from the per-frame
+ * mutation below. Without that exemption the tokens don't survive: the
+ * mutation loop rewrites ~40 random cells a frame, which fully randomizes
+ * a ~16k-cell field within seconds, so seeded credentials decayed to zero
+ * about eight seconds after load.
+ *
+ * Holding them fixed while the hex around them keeps churning is also the
+ * more honest version of the metaphor — committed entries don't change,
+ * the noise is what's ephemeral.
+ */
+function buildLine(cols: number): { text: string; spans: Array<[number, number]> } {
+  let text = "";
+  const spans: Array<[number, number]> = [];
+  while (text.length < cols) {
+    const isCredential = Math.random() < CREDENTIAL_RATE;
+    const fragment = isCredential
+      ? CREDENTIALS[Math.floor(Math.random() * CREDENTIALS.length)]
+      : randomHex(8);
+    if (isCredential) spans.push([text.length, text.length + fragment.length]);
+    text += fragment + " ";
+  }
+  return { text: text.slice(0, cols), spans };
 }
 
 // Large enough, and low enough, that the card row actually overlaps and
@@ -103,6 +120,10 @@ export function ShowcaseHashBackground() {
     let charW = 0;
     let lines: string[] = [];
     let heat = new Float32Array(0);
+    // 1 where a cell holds credential text — those cells are exempt from the
+    // per-frame mutation, so the tokens persist instead of decaying into
+    // noise. See buildLine.
+    let locked = new Uint8Array(0);
     let raf = 0;
     // Offscreen canvas at exactly one pixel per character cell (cols x rows,
     // not screen pixels) — same trick HashMatrix uses to sample where a 3D
@@ -144,8 +165,16 @@ export function ShowcaseHashBackground() {
       charW = ctx!.measureText("M").width;
       cols = Math.ceil(w / charW);
       rows = Math.ceil(h / LINE_HEIGHT);
-      lines = Array.from({ length: rows }, () => buildLine(cols));
       heat = new Float32Array(cols * rows);
+      locked = new Uint8Array(cols * rows);
+      lines = [];
+      for (let row = 0; row < rows; row++) {
+        const { text, spans } = buildLine(cols);
+        lines.push(text);
+        for (const [start, end] of spans) {
+          for (let col = start; col < Math.min(end, cols); col++) locked[row * cols + col] = 1;
+        }
+      }
 
       glyphCanvas = document.createElement("canvas");
       glyphCanvas.width = cols;
@@ -204,6 +233,7 @@ export function ShowcaseHashBackground() {
       for (let i = 0; i < Math.floor(cols * rows * 0.0025); i++) {
         const row = Math.floor(Math.random() * rows);
         const col = Math.floor(Math.random() * cols);
+        if (locked[row * cols + col]) continue; // committed entry, not noise
         const line = lines[row];
         if (line) {
           const ch = line.split("");
@@ -253,7 +283,10 @@ export function ShowcaseHashBackground() {
           const ch = line[col];
           if (!ch || ch === " ") continue;
           const hv = heat[col + row * cols] ?? 0;
-          ctx!.fillStyle = `rgba(255,255,255,${(0.035 + hv * 0.14).toFixed(3)})`;
+          // Credential text sits a step above the noise floor — enough to
+          // register as structure if you look, not enough to read as UI.
+          const base = locked[row * cols + col] ? 0.075 : 0.035;
+          ctx!.fillStyle = `rgba(255,255,255,${(base + hv * 0.14).toFixed(3)})`;
           ctx!.fillText(ch, col * charW, row * LINE_HEIGHT);
         }
       }
