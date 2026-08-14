@@ -53,9 +53,6 @@ export function ShowcaseHud() {
           <Link href="/" className={styles.logoLink} aria-label="Blockchain at Berkeley home">
             <Logo />
           </Link>
-          <Link href="/" className={styles.backLink}>
-            ← Home
-          </Link>
         </div>
       </header>
 

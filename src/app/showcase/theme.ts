@@ -84,19 +84,21 @@ export const COLOR = {
   surface: "#0c0c0c",
   white: "#ffffff",
   screenBacking: "#0c0c0c",
-  // Active-card material: gold gradient hitting the exact site gold at its
-  // brightest, same spirit as the site's bg-gold CTA buttons. Inactive
-  // cards use neutral dark-grays matching --color-border/--color-border-nav
-  // instead of a tinted "ink" — the site's own dark surfaces are neutral,
-  // not warm.
+  // Active-card material: a soft radial glow (not a hard diagonal sweep) in
+  // a deliberately *narrow* luminance range — it never gets dark enough to
+  // swallow the dark ink text that sits on top of it, wherever on the card
+  // that text lands. Center hits the exact site gold, same spirit as the
+  // site's bg-gold CTA buttons. Inactive cards use neutral dark-grays
+  // matching --color-border/--color-border-nav instead of a tinted "ink" —
+  // the site's own dark surfaces are neutral, not warm.
   activeSkinStops: [
-    [0, "#ffe17a"],
-    [0.55, "#fecb33"],
-    [1, "#3a2c08"],
+    [0, "#ffedb0"],
+    [0.6, "#fecb33"],
+    [1, "#d9a536"],
   ] as Array<[number, string]>,
   inactiveSkinStops: [
-    [0, "#232323"],
-    [0.6, "#1a1a1a"],
+    [0, "#242424"],
+    [0.6, "#161616"],
     [1, "#0c0c0c"],
   ] as Array<[number, string]>,
 } as const;

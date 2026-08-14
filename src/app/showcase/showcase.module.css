@@ -164,23 +164,6 @@
   pointer-events: auto;
 }
 
-.backLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: rgba(var(--sc-white-rgb), 0.8);
-  letter-spacing: -0.01em;
-  font-size: 13px;
-  white-space: nowrap;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-.backLink:hover,
-.backLink:focus-visible {
-  color: rgb(var(--sc-white-rgb));
-  outline: none;
-}
-
 .focusInfo {
   position: absolute;
   left: 0;

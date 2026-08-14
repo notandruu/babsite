@@ -58,18 +58,34 @@ function useSnapshot(): ShowcaseSnapshot {
   return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 }
 
-/** Offscreen gradient + grain texture generator — grain breaks up gradient
- * banding so the card material reads as a brushed/printed surface rather
- * than a flat CSS-gradient rectangle. */
+/**
+ * Offscreen soft-radial-glow + fine-grain texture generator. Two changes
+ * from an earlier flat-linear-gradient version, both from the same root
+ * cause: a hard diagonal light-to-dark sweep read as cheap, *and* is what
+ * made dark ink text unreadable wherever it landed in the dark corner. A
+ * soft off-center radial glow (closer to the diffuse, low-contrast glow
+ * look of things like Apple Intelligence's UI) in a narrow luminance range
+ * fixes both — text stays legible everywhere because the surface never
+ * gets that dark. Resolution is also 1024 (was 384): at 384px the grain
+ * was coarse enough to stretch into visible blocky lines once the focus
+ * view zoomed in close, rather than reading as fine texture.
+ */
 function buildSkinTexture(stops: Array<[number, string]>, grainStrength: number) {
-  const size = 384;
+  const size = 1024;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  const grad = ctx.createLinearGradient(0, 0, size * 0.25, size);
+  const grad = ctx.createRadialGradient(
+    size * 0.42,
+    size * 0.36,
+    0,
+    size * 0.42,
+    size * 0.36,
+    size * 0.85
+  );
   for (const [offset, color] of stops) grad.addColorStop(offset, color);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, size, size);
@@ -91,15 +107,15 @@ function buildSkinTexture(stops: Array<[number, string]>, grainStrength: number)
   return texture;
 }
 
-/** Muted brass/bronze skin for the active card — deliberately less saturated
- * than a literal "gold" to avoid reading as plastic/toy-like. */
+/** Soft gold glow for the active card — grain kept fine/low-strength now
+ * that it's rendered at 4x the resolution (see buildSkinTexture). */
 function useActiveSkinTexture() {
-  return useMemo(() => buildSkinTexture(COLOR.activeSkinStops, 10), []);
+  return useMemo(() => buildSkinTexture(COLOR.activeSkinStops, 4), []);
 }
 
 /** Subtle texture for inactive cards so they aren't a completely flat fill. */
 function useInactiveSkinTexture() {
-  return useMemo(() => buildSkinTexture(COLOR.inactiveSkinStops, 6), []);
+  return useMemo(() => buildSkinTexture(COLOR.inactiveSkinStops, 3), []);
 }
 
 function CardScreen({ stop }: { stop: TimelineStop }) {
@@ -181,7 +197,7 @@ function TimelineCard({
   // (single-line-height) slot above the screen. See theme.ts.
   const titleFontSize = useMemo(() => pickTitleFontSize(stop.title, TEXT_MAX_WIDTH), [stop.title]);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     const group = groupRef.current;
     if (!group) return;
     const live = store.getSnapshot();
@@ -199,14 +215,22 @@ function TimelineCard({
 
     const cardWorldX = index * CARD_SPACING;
     const offset = cardWorldX - store.trackX;
-    const curveTarget = liveIsFocused ? 0 : THREE.MathUtils.clamp(offset * -0.16, -0.6, 0.6);
-    group.rotation.y = THREE.MathUtils.damp(group.rotation.y, curveTarget, 7, delta);
+    // While browsing, cards fan out based on distance from the traveled-to
+    // position (the "wall of cards" curve). Once focused, that fan collapses
+    // and the card instead tilts toward the cursor — the classic tilt-card
+    // hover effect (vanilla-tilt.js and friends), driven by R3F's built-in
+    // normalized pointer rather than any manual mousemove wiring.
+    const tiltMax = 0.1; // ~5.7°, subtle
+    const tiltX = liveIsFocused ? -state.pointer.y * tiltMax : 0;
+    const tiltY = liveIsFocused ? state.pointer.x * tiltMax : THREE.MathUtils.clamp(offset * -0.16, -0.6, 0.6);
+    group.rotation.x = THREE.MathUtils.damp(group.rotation.x, tiltX, 6, delta);
+    group.rotation.y = THREE.MathUtils.damp(group.rotation.y, tiltY, 7, delta);
 
     const liftTarget = liveIsFocused ? FOCUSED_CARD_LIFT : 0;
     group.position.y = THREE.MathUtils.damp(group.position.y, liftTarget, 4.5, delta);
 
     if (boxMatRef.current) {
-      const targetEmissive = live.activeIndex === index && !live.isFocused ? 0.4 : 0;
+      const targetEmissive = live.activeIndex === index && !live.isFocused ? 0.22 : 0;
       boxMatRef.current.emissiveIntensity = THREE.MathUtils.damp(
         boxMatRef.current.emissiveIntensity,
         targetEmissive,
@@ -238,8 +262,8 @@ function TimelineCard({
           ref={boxMatRef}
           color={isActive ? COLOR.gold : COLOR.surface}
           map={isActive ? activeSkin : inactiveSkin}
-          roughness={0.55}
-          metalness={0.2}
+          roughness={0.68}
+          metalness={0.12}
           emissive={new THREE.Color(COLOR.gold)}
           emissiveIntensity={0}
         />
