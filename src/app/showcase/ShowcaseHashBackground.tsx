@@ -167,6 +167,10 @@ export function ShowcaseHashBackground() {
       glyphCtx.textBaseline = "middle";
       const fontPx = Math.round(rows * GLYPH_FONT_FRAC);
       glyphCtx.font = `700 ${fontPx}px "EB Garamond", Georgia, serif`;
+      // Digits sitting flush against each other were part of why the shape
+      // read as a blob rather than four distinct characters — spacing them
+      // out gives each one room to be told apart from its neighbors.
+      glyphCtx.letterSpacing = `${Math.round(fontPx * 0.16)}px`;
       const x = cols / 2;
       const y = rows * GLYPH_CENTER_Y_FRAC;
       // Stroke on top of fill to bulk up the strokes — at this small a
@@ -287,14 +291,14 @@ export function ShowcaseHashBackground() {
         for (let i = 0; i < morph.count; i++) {
           const x = morph.sx[i] + (morph.dx[i] - morph.sx[i]) * t;
           const y = morph.sy[i] + (morph.dy[i] - morph.sy[i]) * t;
-          ctx!.fillStyle = "rgba(254,203,51,0.7)";
+          ctx!.fillStyle = "rgba(255,232,190,0.34)";
           ctx!.fillText(morph.chars[i], x, y);
         }
       } else {
         morph = null;
         for (const cell of currentLit) {
           const hv = heat[cell.col + cell.row * cols] ?? 0;
-          ctx!.fillStyle = `rgba(254,203,51,${(0.5 + hv * 0.15).toFixed(3)})`;
+          ctx!.fillStyle = `rgba(255,232,190,${(0.22 + hv * 0.1).toFixed(3)})`;
           ctx!.fillText(GLYPH_PIXEL, cell.x, cell.y);
         }
       }
