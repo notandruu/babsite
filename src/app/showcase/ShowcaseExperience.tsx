@@ -119,8 +119,13 @@ export function ShowcaseExperience() {
           className="absolute inset-0"
           style={{
             opacity: ready ? 1 : 0,
-            transform: ready ? "scale(1)" : "scale(1.02)",
-            transition: "opacity 520ms ease-out, transform 800ms cubic-bezier(0.16,1,0.3,1)",
+            transform: ready ? "scale(1)" : "scale(1.012)",
+            // Opacity lands fast so the cards feel present almost at once;
+            // the settle runs a little longer and on its own curve, which
+            // keeps it from reading as an abrupt cut without holding the
+            // content back. Starting scale is small for the same reason —
+            // a bigger one needs more time to travel.
+            transition: "opacity 260ms ease-out, transform 460ms cubic-bezier(0.16,1,0.3,1)",
           }}
         >
           <Canvas

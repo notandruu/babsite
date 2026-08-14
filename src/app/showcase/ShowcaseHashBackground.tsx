@@ -366,7 +366,10 @@ export function ShowcaseHashBackground() {
         width: "100%",
         height: "100%",
         opacity: shown ? 1 : 0,
-        transition: "opacity 500ms ease-out",
+        // Kept just ahead of the card layer's fade so the field is
+        // established first and the cards land into something, rather than
+        // the two racing each other.
+        transition: "opacity 300ms ease-out",
       }}
     />
   );
