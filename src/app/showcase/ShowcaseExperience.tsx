@@ -98,18 +98,15 @@ export function ShowcaseExperience() {
 
   return (
     <ShowcaseStoreContext.Provider value={store}>
+      {/* Deliberately transparent: the backdrop lives in page.tsx so it's
+          part of the route's server HTML and is already on screen before
+          this client-only component mounts. Painting it again here would
+          just re-cover what's already correct. */}
       <div
         ref={containerRef}
-        className="fixed inset-0 w-screen h-dvh overflow-hidden bg-surface"
+        className="fixed inset-0 w-screen h-dvh overflow-hidden"
         style={{ touchAction: "none" }}
       >
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(90% 70% at 82% 108%, rgba(254,203,51,0.16), rgba(0,0,0,0) 60%), radial-gradient(120% 90% at 10% -10%, rgba(254,203,51,0.1), rgba(0,0,0,0) 55%), #0c0c0c",
-          }}
-        />
         {/* Layer 1 — up immediately, needs no assets. */}
         <ShowcaseHashBackground />
 
