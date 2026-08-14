@@ -13,7 +13,7 @@ export interface TimelineStop {
   href: string;
 }
 
-// Sourced from B@B's internal "brief history" deck — one representative
+// Sourced from B@B's internal "brief history" deck. One representative
 // milestone per year, 2014 through 2024.
 export const TIMELINE_STOPS: TimelineStop[] = [
   {
@@ -24,7 +24,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     title: "Bitcoin Association of Berkeley",
     tagline: "A handful of names on a sign-in sheet",
     description:
-      "A small group of students signed up at the club's first general meeting in Fall 2014, under its original name, Bitcoin Association of Berkeley. It would take two more years and a rebrand before it became Blockchain at Berkeley.",
+      "Started as a handful of students in a Berkeley classroom in Fall 2014, under the name Bitcoin Association of Berkeley. It's now the largest blockchain organization in academia.",
     tags: ["Founding", "Fall 2014"],
     image: "/assets/history/history_2014_founding.jpg",
     href: "/about",
@@ -37,7 +37,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     title: "Blockchain at Berkeley",
     tagline: "The club's first cryptocurrency course",
     description:
-      "The club rebranded from Bitcoin Association of Berkeley to Blockchain at Berkeley and taught its first-ever Cryptocurrency DeCal lecture — the start of what's now the Education department.",
+      "The club rebranded from Bitcoin Association of Berkeley to Blockchain at Berkeley and taught its first Cryptocurrency DeCal. Its online counterpart on edX has since reached over 200,000 students.",
     tags: ["Rebrand", "DeCal"],
     image: "/assets/history/history_2016_decal.jpg",
     href: "/courses",
@@ -50,7 +50,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     title: "Ethereal Hackathon",
     tagline: "Co-hosted with ConsenSys",
     description:
-      "B@B co-hosted the Ethereal Hackathon with ConsenSys and, that same fall, ran its own Crypto Economics Security Conference (CESC) — the club's first time organizing events at that scale.",
+      "B@B co-hosted the Ethereal Hackathon with ConsenSys, then ran its own Crypto Economics Security Conference that same fall: the club's first time organizing events at that scale.",
     tags: ["ConsenSys", "CESC"],
     image: "/assets/history/history_2017_ethereal.jpg",
     href: "/work",
@@ -63,7 +63,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     title: "The market crashed. We didn't.",
     tagline: "Bitcoin fell from $18k to $4k",
     description:
-      "The 2018 crash wiped out most of the industry's hype along with it — Bitcoin fell from roughly $18,000 to under $4,000 over the year. B@B kept building anyway, landing partnerships with Qualcomm, Ford, and BASF that same year.",
+      "The 2018 crash wiped out most of the industry's hype along with it. Bitcoin fell from roughly $18,000 to under $4,000 over the year. B@B kept building anyway, landing partnerships with Qualcomm, Ford, and BASF that same year.",
     tags: ["2018 Crash", "Resilience"],
     image: "/assets/history/history_2018_dropoff.jpg",
     href: "/about",
@@ -87,9 +87,9 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     type: "milestone",
     kicker: "Going Remote",
     title: "A club, over Zoom",
-    tagline: "General meetings, socials, and game nights — all virtual",
+    tagline: "General meetings, socials, and game nights, all virtual",
     description:
-      "COVID-19 sent the club fully remote. General meetings, socials, even game nights moved to Zoom — and the org kept running without missing a semester.",
+      "COVID-19 sent the club fully remote. General meetings, socials, even game nights moved to Zoom, and the org didn't miss a semester.",
     tags: ["COVID-19", "Remote"],
     image: "/assets/history/history_2020_remote.jpg",
     href: "/about",
@@ -102,7 +102,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     title: "Watching members graduate",
     tagline: "Seven years in, the first cohorts moved on",
     description:
-      "By 2021 the club was old enough to watch its early members graduate and head into the industry — a milestone that made B@B feel less like a startup and more like an institution.",
+      "By 2021 the club was old enough to watch its early members graduate and head into the industry. It was the moment B@B stopped feeling like a startup and started feeling like an institution.",
     tags: ["Alumni", "Spring 2021"],
     image: "/assets/history/history_2021_grads.jpg",
     href: "/about",
@@ -115,7 +115,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     title: "Watching Ethereum's Merge together",
     tagline: "Dinner, plus a 24-hour livestream",
     description:
-      "The club gathered for dinner while streaming Ethereum's Merge live — the upgrade that moved the network off proof-of-work for good. Not a bad night to be a member.",
+      "The club gathered for dinner while streaming Ethereum's Merge live: the upgrade that moved the entire network off proof-of-work for good. Not a bad night to be a member.",
     tags: ["Ethereum", "The Merge"],
     image: "/assets/history/history_2022_merge.jpg",
     href: "/about",
@@ -128,7 +128,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     title: "ZK Learning Workshop",
     tagline: "Zero-knowledge proofs, with Aleo",
     description:
-      "B@B partnered with Aleo to run a workshop on zero-knowledge proofs — one of a growing slate of technical sessions as the Education department matured.",
+      "B@B partnered with Aleo to run a workshop on zero-knowledge proofs, one of a growing slate of technical sessions as the Education department matured.",
     tags: ["Aleo", "Zero-Knowledge"],
     image: "/assets/history/history_2023_zk.png",
     href: "/courses",
@@ -141,7 +141,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     title: "ETHGlobal San Francisco",
     tagline: "And a session with Ripple",
     description:
-      "Members represented B@B at ETHGlobal San Francisco and hosted a session with Ripple — a decade in, still showing up to hackathons.",
+      "Members represented B@B at ETHGlobal San Francisco and hosted a session with Ripple. A decade in, still showing up to hackathons.",
     tags: ["ETHGlobal", "Ripple"],
     image: "/assets/history/history_2024_ethglobal.jpg",
     href: "/work",
@@ -152,10 +152,10 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     type: "cta",
     kicker: "Join Us",
     title: "Apply to Blockchain at Berkeley",
-    tagline: "The next chapter is unwritten",
+    tagline: "300+ members, $2B+ in assets advised",
     description:
-      "Ten years in, we're still figuring out what's next — just like that first sign-in sheet in 2014. Come help write it.",
-    tags: ["Applications Open"],
+      "Ten years in, Blockchain at Berkeley has grown into the largest blockchain organization in academia: 300+ members, $2B+ in assets advised, and partners spanning Qualcomm, Ripple, and the teams building Ethereum itself. We're still figuring out what's next. Come help write it.",
+    tags: ["300+ Members", "$2B+ Advised", "Applications Open"],
     href: "/apply",
   },
 ];
