@@ -1,0 +1,284 @@
+/*
+ * DOM-side design tokens — font-family and color both intentionally match
+ * the main site's actual conventions (see src/app/page.tsx,
+ * src/components/Navbar.tsx, globals.css), not a bespoke showcase-only
+ * palette: Instrument Sans, white text at a few fixed opacity steps, gold
+ * (--color-gold) reserved for accents/CTAs, near-black surfaces.
+ *
+ * These mirror src/app/showcase/theme.ts's COLOR object by hand (CSS can't
+ * import TS constants without a build step) — if you change a value here,
+ * update theme.ts too, and vice versa.
+ *   --sc-white-rgb  == theme.COLOR.white   (#ffffff)
+ *   --sc-gold       == theme.COLOR.gold    (#fecb33, == globals.css --color-gold)
+ *   --sc-ink        == theme.COLOR.surface (#0c0c0c, == globals.css --color-surface)
+ */
+.stage {
+  --sc-white-rgb: 255, 255, 255;
+  --sc-gold: #fecb33;
+  --sc-gold-rgb: 254, 203, 51;
+  --sc-ink: #0c0c0c;
+  --sc-ink-rgb: 12, 12, 12;
+
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  font-family: var(--font-instrument-sans), sans-serif;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.46s;
+  background: radial-gradient(128% 104% at 50% 45%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.6) 100%);
+}
+.stage.isFocused .scrim {
+  opacity: 1;
+}
+
+.bloom {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0.16;
+  transition: opacity 0.5s;
+  background:
+    radial-gradient(55% 45% at 50% 42%, rgba(var(--sc-gold-rgb), 0.4), rgba(0, 0, 0, 0) 72%),
+    radial-gradient(65% 55% at 85% 8%, rgba(var(--sc-gold-rgb), 0.24), rgba(0, 0, 0, 0) 70%),
+    radial-gradient(75% 65% at 10% 105%, rgba(var(--sc-gold-rgb), 0.2), rgba(0, 0, 0, 0) 68%);
+}
+.bloom[data-focused="true"] {
+  opacity: 0.36;
+}
+
+.hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  pointer-events: none;
+}
+.hudTop {
+  top: 0;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 28px 40px 0;
+}
+.hudBottom {
+  bottom: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 0 40px 26px;
+  transition: opacity 0.3s;
+}
+.stage.isFocused .hudBottom {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.headingSlot {
+  position: relative;
+  max-width: 60vw;
+  min-height: 74px;
+}
+
+.heading {
+  animation: showcaseFadeIn 0.42s ease both;
+}
+.stage.isFocused .heading {
+  animation: showcaseFadeOut 0.36s ease forwards;
+  pointer-events: none;
+}
+
+.logoLink {
+  display: inline-flex;
+  align-items: center;
+  pointer-events: auto;
+  opacity: 0.92;
+  transition: opacity 0.18s;
+}
+.logoLink:hover {
+  opacity: 1;
+}
+
+.kicker {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: rgba(var(--sc-white-rgb), 0.5);
+}
+.title {
+  margin: 0;
+  font-size: clamp(26px, 3.2vw, 42px);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: rgb(var(--sc-white-rgb));
+}
+.tagline {
+  margin: 6px 0 0;
+  font-size: clamp(14px, 1.4vw, 17px);
+  letter-spacing: -0.02em;
+  color: rgba(var(--sc-white-rgb), 0.65);
+}
+
+.escBackWrap {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s 0.1s;
+}
+.stage.isFocused .escBackWrap {
+  opacity: 1;
+  pointer-events: auto;
+}
+.escBack {
+  padding: 4px 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  color: rgba(var(--sc-white-rgb), 0.8);
+  transition: color 0.2s;
+}
+.escBack:hover {
+  color: var(--sc-gold);
+}
+
+.metaTop {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  pointer-events: auto;
+}
+
+.focusInfo {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* Must match the 0.68 (68%) bottomTarget passed to solveFocusCamera() in
+     ShowcaseScene.tsx — that call is what guarantees the focused card's
+     bottom edge actually lands here, on any viewport, so this panel never
+     overlaps the card. */
+  top: var(--sc-card-bottom, 68%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  width: fit-content;
+  max-width: min(540px, 90vw);
+  margin-inline: auto;
+  padding-top: 28px;
+  pointer-events: none;
+  animation: showcaseFadeIn 0.34s ease both;
+}
+.focusDesc {
+  margin: 0;
+  max-width: 520px;
+  text-align: center;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  line-height: 1.65;
+  color: rgba(var(--sc-white-rgb), 0.7);
+}
+.openLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--sc-ink);
+  background-color: var(--sc-gold);
+  text-decoration: none;
+  pointer-events: auto;
+  transition: background-color 0.18s, filter 0.18s;
+}
+.openLink:hover {
+  filter: brightness(1.08);
+}
+.openLink:focus-visible {
+  outline: 1px solid var(--sc-gold);
+  outline-offset: 3px;
+}
+.openArrow {
+  display: inline-flex;
+  transition: transform 0.2s;
+}
+/* ArrowIcon renders at a fixed 24x24 — sized for the site's big all-caps
+   nav/hero buttons, not this button's small 13px label. Scaling it down
+   locally rather than touching the shared component, which other pages
+   rely on at full size. */
+.openArrow :global(img) {
+  width: 13px;
+  height: 13px;
+}
+.openLink:hover .openArrow {
+  transform: translateX(3px);
+}
+
+.dots {
+  display: flex;
+  gap: 0;
+  pointer-events: auto;
+  touch-action: none;
+}
+.dot {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 30px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dot::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(var(--sc-white-rgb), 0.3);
+  transition: background 0.2s, transform 0.2s;
+}
+.dotOn::before {
+  background: var(--sc-gold);
+  transform: scale(1.4);
+}
+
+@keyframes showcaseFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes showcaseFadeOut {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+@media (max-width: 640px) {
+  .headingSlot {
+    max-width: 78vw;
+  }
+}
