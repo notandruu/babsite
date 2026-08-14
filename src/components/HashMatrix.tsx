@@ -73,10 +73,27 @@ function makeLights(scene: THREE.Scene) {
   top.position.set(0, 20, 4); scene.add(top);
 }
 
+// Raking rig for the campanile — same material/colors as the logo, but a hard
+// key from the side, almost no ambient, and a dim opposing fill. Adjacent faces
+// land in clearly separated brightness bands so the tower's facets stay
+// distinguishable once quantized to ASCII.
+function makeCampLights(scene: THREE.Scene) {
+  scene.add(new THREE.AmbientLight(0xffffff, 0.12));
+  const key = new THREE.DirectionalLight(0xfff0cc, 6.5);
+  key.position.set(7, 16, 12); scene.add(key);
+  const fill = new THREE.DirectionalLight(0xfecb33, 0.85);
+  fill.position.set(-8, 3, 8); scene.add(fill);
+  const top = new THREE.DirectionalLight(0xffffff, 1.1);
+  top.position.set(0, 20, 4); scene.add(top);
+}
+
 export function HashMatrix({ scrollProgressRef, backgroundOnly }: { scrollProgressRef?: MutableRefObject<number>; backgroundOnly?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const linesRef = useRef<string[]>([]);
   const dimsRef = useRef({ cols: 0, rows: 0, charW: 0, charH: 0 });
+  // Finer grid used only by the campanile — smaller glyphs resolve more detail
+  const campLinesRef = useRef<string[]>([]);
+  const campDimsRef = useRef({ cols: 0, rows: 0, charW: 0, charH: 0 });
   const frameRef = useRef(0);
   const threeRef = useRef<ThreeScene | null>(null);
   const campRef = useRef<CampanileScene | null>(null);
@@ -111,7 +128,7 @@ export function HashMatrix({ scrollProgressRef, backgroundOnly }: { scrollProgre
       const size = box.getSize(new THREE.Vector3());
       const faceDim = Math.max(size.x, size.z);
       const visibleWidth = 2 * Math.tan(27.5 * Math.PI / 180) * 19 * pixelAspect;
-      model.scale.setScalar((visibleWidth * 0.7) / faceDim);
+      model.scale.setScalar((visibleWidth * 0.68) / faceDim);
       const box2 = new THREE.Box3().setFromObject(model);
       const center2 = box2.getCenter(new THREE.Vector3());
       model.position.set(-center2.x, -center2.y + 0.5, -center2.z);
@@ -130,14 +147,14 @@ export function HashMatrix({ scrollProgressRef, backgroundOnly }: { scrollProgre
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(55, pixelAspect, 0.1, 1000);
     camera.position.z = 19;
-    makeLights(scene);
+    makeCampLights(scene);
     const campGroup = new THREE.Group();
     scene.add(campGroup);
     new STLLoader().load("/assets/campanile.stl", (geometry) => {
       geometry.computeVertexNormals();
       const mesh = new THREE.Mesh(
         geometry,
-        new THREE.MeshStandardMaterial({ color: new THREE.Color("#FECB33"), metalness: 0.9, roughness: 0.12 })
+        new THREE.MeshStandardMaterial({ color: new THREE.Color("#FECB33"), metalness: 0.9, roughness: 0.12, flatShading: true })
       );
       mesh.rotation.x = -Math.PI / 2;
       const box = new THREE.Box3().setFromObject(mesh);
@@ -161,6 +178,7 @@ export function HashMatrix({ scrollProgressRef, backgroundOnly }: { scrollProgre
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
     const FONT_SIZE = 9, LINE_HEIGHT = 11;
+    const CAMP_FONT_SIZE = 6.5, CAMP_LINE_HEIGHT = 8;
 
     function resize() {
       const parent = canvas!.parentElement!;
@@ -176,13 +194,22 @@ export function HashMatrix({ scrollProgressRef, backgroundOnly }: { scrollProgre
       const rows = Math.ceil(h / charH);
       dimsRef.current = { cols, rows, charW, charH };
       linesRef.current = Array.from({ length: rows }, () => buildLine(cols));
+      // Campanile grid — finer than the logo's
+      ctx.font = `${CAMP_FONT_SIZE}px "Courier New", monospace`;
+      const campCharW = ctx.measureText("M").width;
+      const campCharH = CAMP_LINE_HEIGHT;
+      const campCols = Math.ceil(w / campCharW);
+      const campRows = Math.ceil(h / campCharH);
+      campDimsRef.current = { cols: campCols, rows: campRows, charW: campCharW, charH: campCharH };
+      campLinesRef.current = Array.from({ length: campRows }, () => buildLine(campCols));
+      ctx.font = `${FONT_SIZE}px "Courier New", monospace`;
       // Invalidate any existing snapshot when grid changes
       morphRef.current = null;
       morphSnappedRef.current = false;
       threeRef.current?.renderer.dispose();
       threeRef.current = buildThree(cols, rows, w / h);
       campRef.current?.renderer.dispose();
-      campRef.current = buildCampanile(cols, rows, w / h);
+      campRef.current = buildCampanile(campCols, campRows, w / h);
     }
 
     resize();
@@ -215,8 +242,16 @@ export function HashMatrix({ scrollProgressRef, backgroundOnly }: { scrollProgre
             g: Math.min(255, Math.round(logoPixels[pi + 1] * boost)),
             b: Math.min(255, Math.round(logoPixels[pi + 2] * boost)),
           });
+        }
+      }
+
+      // Campanile destinations live on their own (finer) grid
+      const { cols: cCols, rows: cRows, charW: cCharW, charH: cCharH } = campDimsRef.current;
+      for (let row = 0; row < cRows; row++) {
+        for (let col = 0; col < cCols; col++) {
+          const pi = (row * cCols + col) * 4;
           if (campPixels[pi + 3] > 20) campLit.push({
-            x: col * charW, y: row * charH,
+            x: col * cCharW, y: row * cCharH,
             r: Math.min(255, Math.round(campPixels[pi]     * boost)),
             g: Math.min(255, Math.round(campPixels[pi + 1] * boost)),
             b: Math.min(255, Math.round(campPixels[pi + 2] * boost)),
@@ -281,7 +316,7 @@ export function HashMatrix({ scrollProgressRef, backgroundOnly }: { scrollProgre
 
       // ── Logo 3D render ────────────────────────────────────────────────────
       if (three) {
-        const heroX = ((0.82 * parentW - 12) / parentW - 0.5) * halfVisW * 2;
+        const heroX = ((0.8 * parentW - 12) / parentW - 0.5) * halfVisW * 2;
         three.logoGroup.position.x = heroX;
         three.logoGroup.position.y = 0;
         three.logoGroup.scale.setScalar(three.logoGroup.scale.x + (1 - three.logoGroup.scale.x) * 0.055);
@@ -292,14 +327,15 @@ export function HashMatrix({ scrollProgressRef, backgroundOnly }: { scrollProgre
         three.readCtx.drawImage(three.renderer.domElement, 0, 0);
       }
 
-      // ── Campanile 3D render — always at final position ────────────────────
+      // ── Campanile 3D render — always at final position, on its finer grid ─
+      const { cols: campCols, rows: campRows, charW: campCharW, charH: campCharH } = campDimsRef.current;
       if (camp) {
-        camp.campGroup.position.x = halfVisW * 0.55;
-        camp.campGroup.position.y = -halfVisH;
-        camp.campGroup.rotation.y = Math.PI / 12 + rotRef.current.y * 0.5;
+        camp.campGroup.position.x = 0;
+        camp.campGroup.position.y = -halfVisH * 1.32;
+        camp.campGroup.rotation.y = Math.PI / 6 + rotRef.current.y * 0.5;
         camp.campGroup.rotation.x = rotRef.current.x * 0.3;
         camp.renderer.render(camp.scene, camp.camera);
-        camp.readCtx.clearRect(0, 0, cols, rows);
+        camp.readCtx.clearRect(0, 0, campCols, campRows);
         camp.readCtx.drawImage(camp.renderer.domElement, 0, 0);
       }
 
@@ -324,7 +360,7 @@ export function HashMatrix({ scrollProgressRef, backgroundOnly }: { scrollProgre
       let logoPixels: Uint8ClampedArray | null = null;
       let campPixels: Uint8ClampedArray | null = null;
       if (three) try { logoPixels = three.readCtx.getImageData(0, 0, cols, rows).data; } catch (_) {}
-      if (camp)  try { campPixels = camp.readCtx.getImageData(0, 0, cols, rows).data;  } catch (_) {}
+      if (camp)  try { campPixels = camp.readCtx.getImageData(0, 0, campCols, campRows).data;  } catch (_) {}
 
       // t=0 → logo positions/colors, t=1 → camp positions/colors
       const rawT = Math.min(1, Math.max(0, (sp - 0.35) / 0.65));
@@ -412,24 +448,36 @@ export function HashMatrix({ scrollProgressRef, backgroundOnly }: { scrollProgre
           }
         }
 
-        // Live camp pixels — rise up and fade in together
+        // Live camp pixels — rise up and fade in together, on the finer grid
         if (campBlend > 0 && campPixels) {
-          for (let row = 0; row < rows; row++) {
-            const line = lines[row]; if (!line) continue;
-            for (let col = 0; col < cols; col++) {
+          const campLines = campLinesRef.current;
+          // occasional character churn keeps the fine grid alive too
+          for (let i = 0; i < Math.floor(campCols * campRows * 0.002); i++) {
+            const row = Math.floor(Math.random() * campRows);
+            const col = Math.floor(Math.random() * campCols);
+            if (campLines[row]) {
+              const ch = campLines[row].split("");
+              ch[col] = HEX[Math.floor(Math.random() * 16)];
+              campLines[row] = ch.join("");
+            }
+          }
+          ctx.font = `6.5px "Courier New", monospace`;
+          for (let row = 0; row < campRows; row++) {
+            const line = campLines[row]; if (!line) continue;
+            for (let col = 0; col < campCols; col++) {
               const ch = line[col]; if (!ch || ch === " ") continue;
-              const pi = (row * cols + col) * 4;
+              const pi = (row * campCols + col) * 4;
               if (campPixels[pi + 3] <= 20) continue;
-              const hv = heat[col + row * cols] ?? 0;
               const boost = 1.8;
               const rb = Math.min(255, Math.round(campPixels[pi]     * boost));
               const gb = Math.min(255, Math.round(campPixels[pi + 1] * boost));
               const bb = Math.min(255, Math.round(campPixels[pi + 2] * boost));
               const brightness = (rb + gb + bb) / (3 * 255);
-              ctx.fillStyle = `rgba(${rb},${gb},${bb},${Math.min(1, (0.88 + brightness * 0.12 + hv * 0.05) * campBlend)})`;
-              ctx.fillText(ch, col * charW, row * charH + campRise);
+              ctx.fillStyle = `rgba(${rb},${gb},${bb},${Math.min(1, (0.88 + brightness * 0.12) * campBlend)})`;
+              ctx.fillText(ch, col * campCharW, row * campCharH + campRise);
             }
           }
+          ctx.font = `${FONT_SIZE}px "Courier New", monospace`;
         }
       }
 
