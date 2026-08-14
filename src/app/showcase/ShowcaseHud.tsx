@@ -2,12 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import { Volume2, VolumeX } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { TIMELINE_STOPS } from "./data";
 import { CARD_SPACING, useShowcaseStoreContext } from "./useShowcaseStore";
-import { useShowcaseSound } from "./useShowcaseSound";
 import styles from "./showcase.module.css";
 
 const RULER_SCALE = 90;
@@ -15,7 +13,6 @@ const RULER_SCALE = 90;
 export function ShowcaseHud() {
   const store = useShowcaseStoreContext();
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
-  const sound = useShowcaseSound();
   const rulerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,22 +56,8 @@ export function ShowcaseHud() {
           <Link href="/" className={styles.backLink}>
             ← Home
           </Link>
-          <button
-            type="button"
-            className={styles.soundBtn}
-            aria-pressed={sound.enabled}
-            aria-label={sound.enabled ? "Mute sound" : "Enable sound"}
-            title={sound.enabled ? "Sound on" : "Click to enable sound"}
-            onClick={sound.toggle}
-          >
-            {sound.enabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
-          </button>
         </div>
       </header>
-
-      <aside className={styles.era} aria-label="Currently viewing">
-        <span className={styles.eraTools}>{activeStop.tags.join(" · ")}</span>
-      </aside>
 
       {focusedStop && (
         <div className={styles.focusInfo} key={focusedStop.id}>
@@ -113,8 +96,6 @@ export function ShowcaseHud() {
             />
           ))}
         </div>
-
-        <p className={styles.hint}>scroll or ← → to travel · click a card to focus</p>
       </footer>
     </div>
   );

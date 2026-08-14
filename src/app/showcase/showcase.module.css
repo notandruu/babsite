@@ -111,11 +111,10 @@
 .kicker {
   display: block;
   margin-bottom: 8px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(var(--sc-white-rgb), 0.4);
+  letter-spacing: -0.01em;
+  color: rgba(var(--sc-white-rgb), 0.5);
 }
 .title {
   margin: 0;
@@ -150,8 +149,7 @@
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: -0.01em;
   color: rgba(var(--sc-white-rgb), 0.8);
   transition: color 0.2s;
 }
@@ -162,7 +160,7 @@
 .metaTop {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   pointer-events: auto;
 }
 
@@ -171,8 +169,7 @@
   align-items: center;
   gap: 6px;
   color: rgba(var(--sc-white-rgb), 0.8);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: -0.01em;
   font-size: 13px;
   white-space: nowrap;
   text-decoration: none;
@@ -184,59 +181,15 @@
   outline: none;
 }
 
-.soundBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border-radius: 999px;
-  border: 1px solid rgba(var(--sc-white-rgb), 0.18);
-  background: rgba(var(--sc-white-rgb), 0.06);
-  color: rgba(var(--sc-white-rgb), 0.85);
-  backdrop-filter: blur(6px);
-  cursor: pointer;
-  transition: background 0.18s, color 0.18s, transform 0.18s;
-}
-.soundBtn:hover {
-  background: rgba(var(--sc-white-rgb), 0.14);
-}
-.soundBtn:active {
-  transform: scale(0.94);
-}
-.soundBtn[aria-pressed="true"] {
-  background: var(--sc-gold);
-  color: var(--sc-ink);
-  border-color: transparent;
-}
-
-.era {
-  position: absolute;
-  z-index: 2;
-  right: 40px;
-  bottom: 96px;
-  text-align: right;
-  pointer-events: none;
-  font-size: 10px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: rgba(var(--sc-white-rgb), 0.4);
-  animation: showcaseFadeIn 0.42s ease both;
-  transition: opacity 0.3s;
-}
-.stage.isFocused .era {
-  opacity: 0;
-}
-.eraTools {
-  color: inherit;
-}
-
 .focusInfo {
   position: absolute;
   left: 0;
   right: 0;
-  top: var(--sc-card-bottom, 66%);
+  /* Must match the 0.6 (60%) bottomTarget passed to solveFocusCamera() in
+     ShowcaseScene.tsx — that call is what guarantees the focused card's
+     bottom edge actually lands here, on any viewport, so this panel never
+     overlaps the card. */
+  top: var(--sc-card-bottom, 60%);
   z-index: 3;
   display: flex;
   flex-direction: column;
@@ -352,15 +305,6 @@
   transform: scale(1.4);
 }
 
-.hint {
-  margin: 0;
-  text-align: center;
-  font-size: 10px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: rgba(var(--sc-white-rgb), 0.45);
-}
-
 @keyframes showcaseFadeIn {
   from {
     opacity: 0;
@@ -386,9 +330,6 @@
 @media (max-width: 640px) {
   .headingSlot {
     max-width: 78vw;
-  }
-  .era {
-    display: none;
   }
   .ruler {
     width: 88vw;

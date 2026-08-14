@@ -20,7 +20,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     id: "founding",
     year: "2014",
     type: "milestone",
-    kicker: "FOUNDED 2014",
+    kicker: "Founded 2014",
     title: "Bitcoin Association of Berkeley",
     tagline: "A handful of names on a sign-in sheet",
     description:
@@ -33,7 +33,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     id: "decal",
     year: "2016",
     type: "milestone",
-    kicker: "FIRST DECAL",
+    kicker: "First DeCal",
     title: "Blockchain at Berkeley",
     tagline: "The club's first cryptocurrency course",
     description:
@@ -46,7 +46,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     id: "ethereal",
     year: "2017",
     type: "milestone",
-    kicker: "FIRST HACKATHON",
+    kicker: "First Hackathon",
     title: "Ethereal Hackathon",
     tagline: "Co-hosted with ConsenSys",
     description:
@@ -59,7 +59,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     id: "dropoff",
     year: "2018",
     type: "milestone",
-    kicker: "THE DROP OFF",
+    kicker: "The Drop Off",
     title: "The market crashed. We didn't.",
     tagline: "Bitcoin fell from $18k to $4k",
     description:
@@ -72,7 +72,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     id: "xcelerator",
     year: "2019",
     type: "milestone",
-    kicker: "NEW VENTURE",
+    kicker: "New Venture",
     title: "Berkeley Blockchain Xcelerator",
     tagline: "Launched with Haas and the Sutardja Center",
     description:
@@ -85,7 +85,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     id: "remote",
     year: "2020",
     type: "milestone",
-    kicker: "GOING REMOTE",
+    kicker: "Going Remote",
     title: "A club, over Zoom",
     tagline: "General meetings, socials, and game nights — all virtual",
     description:
@@ -98,7 +98,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     id: "grads",
     year: "2021",
     type: "milestone",
-    kicker: "FIRST GRADUATES",
+    kicker: "First Graduates",
     title: "Watching members graduate",
     tagline: "Seven years in, the first cohorts moved on",
     description:
@@ -111,7 +111,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     id: "merge",
     year: "2022",
     type: "milestone",
-    kicker: "THE MERGE",
+    kicker: "The Merge",
     title: "Watching Ethereum's Merge together",
     tagline: "Dinner, plus a 24-hour livestream",
     description:
@@ -124,7 +124,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     id: "zk",
     year: "2023",
     type: "milestone",
-    kicker: "TECHNICAL WORKSHOPS",
+    kicker: "Technical Workshops",
     title: "ZK Learning Workshop",
     tagline: "Zero-knowledge proofs, with Aleo",
     description:
@@ -137,7 +137,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     id: "ethglobal",
     year: "2024",
     type: "milestone",
-    kicker: "STILL HACKING",
+    kicker: "Still Hacking",
     title: "ETHGlobal San Francisco",
     tagline: "And a session with Ripple",
     description:
@@ -150,7 +150,7 @@ export const TIMELINE_STOPS: TimelineStop[] = [
     id: "apply",
     year: "NOW",
     type: "cta",
-    kicker: "JOIN US",
+    kicker: "Join Us",
     title: "Apply to Blockchain at Berkeley",
     tagline: "The next chapter is unwritten",
     description:

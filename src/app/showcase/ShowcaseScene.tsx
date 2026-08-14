@@ -15,6 +15,44 @@ const TEXT_MAX_WIDTH = CARD.width - CARD.padding * 2;
 const TEXT_LEFT_X = -CARD.width / 2 + CARD.padding;
 const FRONT_Z = CARD.depth / 2 + 0.01;
 
+// How far a card rises (world Y) when it becomes the focused one — shared
+// between TimelineCard's lift animation and the FOCUS_CAMERA derivation
+// below, since the latter needs to know exactly where the lifted card sits.
+const FOCUSED_CARD_LIFT = 0.18;
+// Must match the <Canvas camera={{ fov: ... }}> prop in ShowcaseExperience.tsx.
+const CAMERA_FOV_DEG = 42;
+
+/**
+ * Solves for the focused-mode camera's Y position and distance that put the
+ * card's top/bottom edges at exact, chosen fractions of the viewport height
+ * — not eyeballed. Because Three.js's `fov` is always the *vertical* field
+ * of view, this fraction is independent of viewport aspect ratio: it holds
+ * on any screen width once solved for a given fov.
+ *
+ * Given camera looks level (lookAt.y === camera.position.y) at a card
+ * centered at world X with vertical half-extent `h` at the render distance:
+ *   topOfFrameY = camera.y + h
+ *   fractionFromTop(worldY) = (topOfFrameY - worldY) / (2h)
+ * Solving fractionFromTop(cardTop) = topMargin and
+ * fractionFromTop(cardBottom) = bottomTarget simultaneously for h and
+ * camera.y (see the two equations below) pins down both.
+ */
+function solveFocusCamera(topMargin: number, bottomTarget: number) {
+  const cardTop = FOCUSED_CARD_LIFT + CARD.height / 2;
+  const cardBottom = FOCUSED_CARD_LIFT - CARD.height / 2;
+  const h = (cardTop - cardBottom) / ((bottomTarget - topMargin) * 2);
+  const topOfFrameY = cardTop + topMargin * 2 * h;
+  const y = topOfFrameY - h;
+  const distance = h / Math.tan((CAMERA_FOV_DEG / 2) * (Math.PI / 180));
+  return { y, distance };
+}
+
+// Card top sits 8% down from the top of the frame; card bottom sits at 60%,
+// leaving a guaranteed 40% of the viewport for the DOM description/CTA
+// panel below it (showcase.module.css's --sc-card-bottom must match the
+// 60% here — see the comment on .focusInfo).
+const FOCUS_CAMERA = solveFocusCamera(0.08, 0.6);
+
 function useSnapshot(): ShowcaseSnapshot {
   const store = useShowcaseStoreContext();
   return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
@@ -164,7 +202,7 @@ function TimelineCard({
     const curveTarget = liveIsFocused ? 0 : THREE.MathUtils.clamp(offset * -0.16, -0.6, 0.6);
     group.rotation.y = THREE.MathUtils.damp(group.rotation.y, curveTarget, 7, delta);
 
-    const liftTarget = liveIsFocused ? 0.18 : 0;
+    const liftTarget = liveIsFocused ? FOCUSED_CARD_LIFT : 0;
     group.position.y = THREE.MathUtils.damp(group.position.y, liftTarget, 4.5, delta);
 
     if (boxMatRef.current) {
@@ -277,16 +315,17 @@ function CameraRig() {
        without triggering a re-render every frame. */
     const snap = store.getSnapshot();
     if (snap.focusedIndex !== null) {
-      // Framed so the card sits in the upper ~60% of the viewport, leaving
-      // deliberate room below for the DOM description/CTA panel — at the
-      // previous closer framing the card's bottom edge landed at ~86% down
-      // the viewport, which is why the focus description text was
-      // overlapping the card's own bottom tags.
+      // Solved (not eyeballed) so the focused card's top/bottom edges land
+      // at exact, known fractions of the viewport height — see the
+      // derivation in FOCUS_CAMERA above. A prior version guessed this
+      // framing and got it wrong (~72% instead of the assumed 66%), which
+      // is why the focus description text was overlapping the card's own
+      // bottom tags.
       const targetX = snap.focusedIndex * CARD_SPACING;
       camera.position.x = THREE.MathUtils.damp(camera.position.x, targetX, 5, delta);
-      camera.position.y = THREE.MathUtils.damp(camera.position.y, -0.05, 5, delta);
-      camera.position.z = THREE.MathUtils.damp(camera.position.z, 4.2, 5, delta);
-      camera.lookAt(targetX, -0.05, 0);
+      camera.position.y = THREE.MathUtils.damp(camera.position.y, FOCUS_CAMERA.y, 5, delta);
+      camera.position.z = THREE.MathUtils.damp(camera.position.z, FOCUS_CAMERA.distance, 5, delta);
+      camera.lookAt(targetX, FOCUS_CAMERA.y, 0);
     } else {
       const targetX = store.trackX;
       const px = state.pointer.x;
