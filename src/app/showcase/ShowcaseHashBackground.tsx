@@ -71,6 +71,11 @@ function buildLine(cols: number): { text: string; spans: Array<[number, number]>
 const GLYPH_CENTER_Y_FRAC = 0.34;
 const GLYPH_FONT_FRAC = 0.4;
 const GLYPH_TRACKING_FRAC = 0.16;
+// A light stroke on top of the fill to thicken the strokes. Archivo Black
+// is already the heaviest weight available, so extra weight has to come
+// from here — but it has to stay small: an earlier version used 0.18 and
+// that closed up the counters of 0/6/8/9 into solid discs.
+const GLYPH_WEIGHT_FRAC = 0.055;
 
 // Whatever random hex character happened to be sitting at a lit cell made a
 // poor "pixel" for the numeral — each glyph has its own shape and ink
@@ -210,19 +215,18 @@ export function ShowcaseHashBackground() {
       const fontPx = Math.round(rows * GLYPH_FONT_FRAC);
       glyphCtx.clearRect(0, 0, cols, rows);
       glyphCtx.fillStyle = "#fff";
+      glyphCtx.strokeStyle = "#fff";
+      glyphCtx.lineJoin = "round";
       glyphCtx.textAlign = "center";
       glyphCtx.textBaseline = "middle";
-      // No stroke pass — Archivo Black is already maximum-weight, and
-      // stroking an outline on top of that fills in the counters of digits
-      // like 0/6/8/9, turning them into solid discs.
       glyphCtx.font = `400 ${fontPx}px "Archivo Black", "Arial Black", sans-serif`;
       const digitW = glyphCtx.measureText("0").width;
       const tracking = fontPx * GLYPH_TRACKING_FRAC;
-      glyphCtx.fillText(
-        ch,
-        digitCenterX(slotIndex, digitW, tracking),
-        rows * GLYPH_CENTER_Y_FRAC
-      );
+      const x = digitCenterX(slotIndex, digitW, tracking);
+      const y = rows * GLYPH_CENTER_Y_FRAC;
+      glyphCtx.lineWidth = fontPx * GLYPH_WEIGHT_FRAC;
+      glyphCtx.fillText(ch, x, y);
+      glyphCtx.strokeText(ch, x, y);
       const data = glyphCtx.getImageData(0, 0, cols, rows).data;
       const lit: LitCell[] = [];
       for (let row = 0; row < rows; row++) {
@@ -269,16 +273,19 @@ export function ShowcaseHashBackground() {
         const fresh = slots.length !== YEAR_DIGITS;
         for (let i = 0; i < YEAR_DIGITS; i++) {
           const ch = year[i];
-          // Only the digits that actually changed re-resolve; the rest keep
-          // their existing cells and stay steady, which is what holds the
-          // numeral legible through a fast scroll.
+          // Re-sample only the digits whose character actually changed —
+          // resampling an unchanged digit would be identical work for an
+          // identical result.
           if (fresh || slots[i].char !== ch) {
-            slots[i] = {
-              char: ch,
-              cells: sampleDigit(ch, i),
-              resolveUntil: now + RESOLVE_MS + i * LADDER_MS,
-            };
+            slots[i] = { char: ch, cells: sampleDigit(ch, i), resolveUntil: 0 };
           }
+          // ...but every digit lights up, changed or not, so the whole year
+          // reads as one event. Only lighting the changed digits made the
+          // year look like a counter incrementing a single column. The
+          // left-to-right stagger keeps it from being a flat simultaneous
+          // blink, and since a resolving cell draws brighter than a settled
+          // one this is a pulse across the numeral, never a dropout.
+          slots[i].resolveUntil = now + RESOLVE_MS + i * LADDER_MS;
         }
         shownYear = year;
       }
