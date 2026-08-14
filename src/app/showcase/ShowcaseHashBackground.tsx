@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TIMELINE_STOPS } from "./data";
 import { CARD_SPACING, useShowcaseStoreContext } from "./useShowcaseStore";
 
@@ -130,6 +130,15 @@ interface DigitSlot {
 export function ShowcaseHashBackground() {
   const store = useShowcaseStoreContext();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // The field needs no assets, so it comes up immediately and carries the
+  // first moment on its own while the heavier 3D layer is still resolving.
+  // That's what keeps the load from being a blank stare followed by
+  // everything arriving at once.
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -162,9 +171,20 @@ export function ShowcaseHashBackground() {
 
     // Archivo Black for the numeral stencil specifically (not the ambient
     // field, which stays Courier New to keep the hex-code look).
-    loadNumeralFont().then(() => {
-      shownYear = ""; // re-sample in case this resolved after first paint
-    });
+    //
+    // The numeral holds off until this resolves rather than painting in the
+    // fallback face and re-flowing when the real one lands. That keeps the
+    // font off the page's critical path entirely — the field is already up
+    // and animating, and the year simply resolves into it a beat later,
+    // which is a deliberate-looking arrival rather than a correction.
+    let fontReady = false;
+    const onFontSettled = () => {
+      fontReady = true;
+      shownYear = ""; // sample now that the real face is available
+    };
+    // Cap the wait so a slow or blocked CDN just means falling back, not a
+    // numeral that never appears at all.
+    Promise.race([loadNumeralFont(), new Promise((r) => setTimeout(r, 1500))]).then(onFontSettled);
 
     function resize() {
       const w = window.innerWidth;
@@ -269,7 +289,7 @@ export function ShowcaseHashBackground() {
       const yearIndex = Math.max(0, Math.min(YEARS.length - 1, Math.round(t * (YEARS.length - 1))));
       const year = YEARS[yearIndex];
 
-      if (year !== shownYear) {
+      if (fontReady && year !== shownYear) {
         const fresh = slots.length !== YEAR_DIGITS;
         for (let i = 0; i < YEAR_DIGITS; i++) {
           const ch = year[i];
@@ -340,7 +360,14 @@ export function ShowcaseHashBackground() {
     <canvas
       ref={canvasRef}
       aria-hidden="true"
-      style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        opacity: shown ? 1 : 0,
+        transition: "opacity 500ms ease-out",
+      }}
     />
   );
 }

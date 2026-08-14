@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { ShowcaseScene } from "./ShowcaseScene";
 import { ShowcaseHud } from "./ShowcaseHud";
-import { ShowcaseHashBackground, loadNumeralFont } from "./ShowcaseHashBackground";
+import { ShowcaseHashBackground } from "./ShowcaseHashBackground";
 import { ShowcaseStore, ShowcaseStoreContext } from "./useShowcaseStore";
 import { TIMELINE_STOPS } from "./data";
 
@@ -24,30 +24,23 @@ export function ShowcaseExperience() {
   // font arrived. Everything still loads in that order — it just does it
   // behind an opaque backdrop now, and the whole composed scene is revealed
   // in one move once the assets that cause visible pops are actually ready.
-  // Two gates, both required. `sceneReady` comes from the render loop
-  // itself (see SceneReadySignal) and covers textures + canvas sizing;
-  // `fontReady` covers the background numeral's font, which would otherwise
-  // re-flow visibly after the reveal.
+  // Only the 3D layer is gated, and only on the one thing that actually
+  // pops: textures decoded and the canvas laid out at its real size (see
+  // SceneReadySignal). The hex field renders immediately underneath, so
+  // there's never a dead frame waiting on this.
+  //
+  // An earlier version also gated on the numeral's webfont, which meant a
+  // slow CDN could hold the entire page on an empty gradient for over a
+  // second and then drop everything in at once. The font now resolves
+  // independently inside the background layer.
   const [sceneReady, setSceneReady] = useState(false);
-  const [fontReady, setFontReady] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
-  const ready = (sceneReady && fontReady) || timedOut;
+  const ready = sceneReady || timedOut;
 
   useEffect(() => {
-    let cancelled = false;
-    // Cap the font wait: it's a third-party CDN, and a slow or blocked one
-    // must never be what keeps the page hidden.
-    Promise.race([loadNumeralFont(), new Promise((r) => setTimeout(r, 1200))]).then(() => {
-      if (!cancelled) setFontReady(true);
-    });
-    // Absolute backstop — show the page no matter what went wrong.
-    const failsafe = setTimeout(() => {
-      if (!cancelled) setTimedOut(true);
-    }, 3000);
-    return () => {
-      cancelled = true;
-      clearTimeout(failsafe);
-    };
+    // Backstop, in case a texture never resolves — show the scene anyway.
+    const failsafe = setTimeout(() => setTimedOut(true), 3000);
+    return () => clearTimeout(failsafe);
   }, []);
 
   const handleSceneReady = useCallback(() => setSceneReady(true), []);
@@ -117,18 +110,22 @@ export function ShowcaseExperience() {
               "radial-gradient(90% 70% at 82% 108%, rgba(254,203,51,0.16), rgba(0,0,0,0) 60%), radial-gradient(120% 90% at 10% -10%, rgba(254,203,51,0.1), rgba(0,0,0,0) 55%), #0c0c0c",
           }}
         />
-        {/* Everything that composes the scene reveals as one, over the
-            gradient backdrop above — which stays painted the whole time, so
-            there's never a blank or white frame to fall through to. */}
+        {/* Layer 1 — up immediately, needs no assets. */}
+        <ShowcaseHashBackground />
+
+        {/* Layer 2 — the cards, revealed together once genuinely ready,
+            settling into a field that's already alive behind them. Keeping
+            these two layers separate is what removes the "nothing, then
+            everything at once" feel; the gradient backdrop above stays
+            painted throughout, so no blank or white frame shows through. */}
         <div
           className="absolute inset-0"
           style={{
             opacity: ready ? 1 : 0,
-            transform: ready ? "scale(1)" : "scale(1.015)",
-            transition: "opacity 620ms ease-out, transform 900ms cubic-bezier(0.16,1,0.3,1)",
+            transform: ready ? "scale(1)" : "scale(1.02)",
+            transition: "opacity 520ms ease-out, transform 800ms cubic-bezier(0.16,1,0.3,1)",
           }}
         >
-          <ShowcaseHashBackground />
           <Canvas
             key={canvasKey}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
