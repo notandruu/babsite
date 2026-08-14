@@ -2,7 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import { TIMELINE_STOPS } from "./data";
-import { useShowcaseStoreContext } from "./useShowcaseStore";
+import { CARD_SPACING, useShowcaseStoreContext } from "./useShowcaseStore";
+
+// Sparse era markers rather than one per card — cycling through all eleven
+// real stops meant some (2016/2017/2018/2019) flashed past within a couple
+// seconds of travel. Four evenly-spaced round years read as a slower,
+// sweeping sense of scale instead, independent of which card is active.
+const MILESTONE_YEARS = ["2014", "2018", "2022", "2026"];
 
 // Same hex-noise language as the homepage hero (src/components/HashMatrix.tsx,
 // backgroundOnly mode) — this is a smaller, purpose-built sibling rather than
@@ -37,12 +43,29 @@ function easeOutBack(t: number) {
   return 1 + c3 * p * p * p + c1 * p * p;
 }
 
-// The numeral used to sit dead-center, which is exactly where the active
-// card always is — so the card just covered it. This puts it in the gap
-// between the DOM heading and the card row instead (browse-mode camera in
-// ShowcaseScene.tsx aims to keep that gap open), sized to actually fit it.
-const GLYPH_CENTER_Y_FRAC = 0.22;
-const GLYPH_FONT_FRAC = 0.14;
+// Large enough, and low enough, that the card row actually overlaps and
+// eclipses its lower portion — the numeral reads as a big object the cards
+// float in front of, visible in the gaps around and above them, rather than
+// a shape confined to a strip that avoids the cards entirely.
+const GLYPH_CENTER_Y_FRAC = 0.34;
+const GLYPH_FONT_FRAC = 0.4;
+
+// A fast scroll fling can walk the active index through several stops a
+// second — far faster than TRANSITION_MS. Starting a new flight on top of
+// one that's still mid-air was the "jumble": abandoned particles snapping
+// off toward a stale destination. Below this gap since the last change, skip
+// the animation and just snap straight to the new shape; only a change that
+// stands on its own for a beat gets the full flight.
+const MIN_ANIMATED_GAP_MS = 260;
+
+// Whatever random hex character happened to be sitting at a lit cell in the
+// ambient field made a poor "pixel" for the numeral — each glyph has its own
+// shape and ink weight, so the outline read as noisy static rather than a
+// digit. A fixed glyph makes every lit cell read the same way, so the
+// silhouette carries the shape — a solid block was legible but read as a
+// flat, overly-saturated painted-on shape rather than something built out
+// of the same hex-character material as the rest of the field.
+const GLYPH_PIXEL = "0";
 
 interface LitCell {
   x: number;
@@ -90,6 +113,22 @@ export function ShowcaseHashBackground() {
     let currentLit: LitCell[] = [];
     let morph: Morph | null = null;
     let transitionStart = 0;
+    let lastChangeAt = 0;
+
+    // EB Garamond for the numeral stencil specifically (not the ambient
+    // field, which stays Courier New to keep the hex-code look) — canvas
+    // ctx.font needs the actual family loaded before it'll draw with it, so
+    // fetch the stylesheet and wait on it rather than assuming it's ready.
+    const fontLink = document.createElement("link");
+    fontLink.rel = "stylesheet";
+    fontLink.href = "https://fonts.googleapis.com/css2?family=EB+Garamond:wght@600;700&display=swap";
+    document.head.appendChild(fontLink);
+    document.fonts
+      .load('700 40px "EB Garamond"')
+      .then(() => {
+        shownIndex = -1; // force a re-sample now that the real font is ready
+      })
+      .catch(() => {});
 
     function resize() {
       const w = window.innerWidth;
@@ -119,19 +158,29 @@ export function ShowcaseHashBackground() {
     resize();
     window.addEventListener("resize", resize);
 
-    function sampleLit(index: number): LitCell[] {
+    function sampleLit(year: string): LitCell[] {
       if (!glyphCtx || !glyphCanvas) return [];
       glyphCtx.clearRect(0, 0, cols, rows);
       glyphCtx.fillStyle = "#fff";
+      glyphCtx.strokeStyle = "#fff";
       glyphCtx.textAlign = "center";
       glyphCtx.textBaseline = "middle";
-      glyphCtx.font = `600 ${Math.round(rows * GLYPH_FONT_FRAC)}px "Courier New", monospace`;
-      glyphCtx.fillText(TIMELINE_STOPS[index].year, cols / 2, rows * GLYPH_CENTER_Y_FRAC);
+      const fontPx = Math.round(rows * GLYPH_FONT_FRAC);
+      glyphCtx.font = `700 ${fontPx}px "EB Garamond", Georgia, serif`;
+      const x = cols / 2;
+      const y = rows * GLYPH_CENTER_Y_FRAC;
+      // Stroke on top of fill to bulk up the strokes — at this small a
+      // render size a plain fill leaves most of the glyph under the
+      // anti-aliasing threshold, so the sampled shape came out as sparse,
+      // barely-legible flecks instead of a solid numeral.
+      glyphCtx.lineWidth = Math.max(1, fontPx * 0.18);
+      glyphCtx.fillText(year, x, y);
+      glyphCtx.strokeText(year, x, y);
       const data = glyphCtx.getImageData(0, 0, cols, rows).data;
       const lit: LitCell[] = [];
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
-          if (data[(row * cols + col) * 4 + 3] > 40) {
+          if (data[(row * cols + col) * 4 + 3] > 15) {
             lit.push({ x: col * charW, y: row * LINE_HEIGHT, row, col });
           }
         }
@@ -161,7 +210,7 @@ export function ShowcaseHashBackground() {
         sy[i] = src.y;
         dx[i] = dst.x;
         dy[i] = dst.y;
-        chars[i] = lines[src.row]?.[src.col] ?? HEX[Math.floor(Math.random() * 16)];
+        chars[i] = GLYPH_PIXEL;
       }
       return { count, sx, sy, dx, dy, chars };
     }
@@ -185,18 +234,29 @@ export function ShowcaseHashBackground() {
         if (heat[i] > 0) heat[i] = Math.max(0, heat[i] - 0.012);
       }
 
-      const activeIndex = store.getSnapshot().activeIndex;
-      if (activeIndex !== shownIndex) {
-        const newLit = sampleLit(activeIndex);
-        if (shownIndex === -1) {
-          // Nothing to fly in from on first paint — appear directly.
+      const totalRange = (TIMELINE_STOPS.length - 1) * CARD_SPACING;
+      const segment = totalRange / MILESTONE_YEARS.length;
+      const milestoneIndex = Math.max(
+        0,
+        Math.min(MILESTONE_YEARS.length - 1, Math.floor(store.trackX / segment))
+      );
+      if (milestoneIndex !== shownIndex) {
+        const now = performance.now();
+        const gap = now - lastChangeAt;
+        const newLit = sampleLit(MILESTONE_YEARS[milestoneIndex]);
+        if (shownIndex === -1 || gap < MIN_ANIMATED_GAP_MS) {
+          // First paint, or the active card is still changing faster than a
+          // flight can resolve (mid fast-scroll) — snap instead of layering
+          // another animation on top of one that hasn't landed yet.
           currentLit = newLit;
+          morph = null;
         } else {
           morph = buildMorph(currentLit, newLit);
           currentLit = newLit;
-          transitionStart = performance.now();
+          transitionStart = now;
         }
-        shownIndex = activeIndex;
+        lastChangeAt = now;
+        shownIndex = milestoneIndex;
       }
 
       // Base hash field — every cell, unconditionally. The old numeral's
@@ -227,15 +287,15 @@ export function ShowcaseHashBackground() {
         for (let i = 0; i < morph.count; i++) {
           const x = morph.sx[i] + (morph.dx[i] - morph.sx[i]) * t;
           const y = morph.sy[i] + (morph.dy[i] - morph.sy[i]) * t;
-          ctx!.fillStyle = "rgba(254,203,51,0.55)";
+          ctx!.fillStyle = "rgba(254,203,51,0.7)";
           ctx!.fillText(morph.chars[i], x, y);
         }
       } else {
         morph = null;
         for (const cell of currentLit) {
           const hv = heat[cell.col + cell.row * cols] ?? 0;
-          ctx!.fillStyle = `rgba(254,203,51,${(0.34 + hv * 0.12).toFixed(3)})`;
-          ctx!.fillText(lines[cell.row]?.[cell.col] ?? HEX[0], cell.x, cell.y);
+          ctx!.fillStyle = `rgba(254,203,51,${(0.5 + hv * 0.15).toFixed(3)})`;
+          ctx!.fillText(GLYPH_PIXEL, cell.x, cell.y);
         }
       }
 
