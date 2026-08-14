@@ -197,8 +197,8 @@
 .openLink {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 22px;
+  gap: 10px;
+  padding: 11px 20px;
   font-size: 13px;
   font-weight: 500;
   letter-spacing: -0.01em;
@@ -216,8 +216,16 @@
   outline-offset: 3px;
 }
 .openArrow {
-  display: inline-block;
+  display: inline-flex;
   transition: transform 0.2s;
+}
+/* ArrowIcon renders at a fixed 24x24 — sized for the site's big all-caps
+   nav/hero buttons, not this button's small 13px label. Scaling it down
+   locally rather than touching the shared component, which other pages
+   rely on at full size. */
+.openArrow :global(img) {
+  width: 13px;
+  height: 13px;
 }
 .openLink:hover .openArrow {
   transform: translateX(3px);

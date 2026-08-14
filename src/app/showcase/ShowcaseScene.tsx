@@ -15,6 +15,22 @@ const TEXT_MAX_WIDTH = CARD.width - CARD.padding * 2;
 const TEXT_LEFT_X = -CARD.width / 2 + CARD.padding;
 const FRONT_Z = CARD.depth / 2 + 0.01;
 
+/**
+ * Spreads a card's tags across the full text width instead of stacking them
+ * left-to-right at a fixed stride — the first tag anchors to the left edge,
+ * the last to the right edge, and anything in between sits at an even
+ * fraction, center-anchored. A fixed stride left every tag row looking
+ * arbitrarily positioned (and let a long tag like "Zero-Knowledge" crowd
+ * whatever came after it); this scales with however many tags a given card
+ * actually has, so it holds for every card without a per-card tweak.
+ */
+function tagLayout(index: number, count: number): { x: number; anchorX: "left" | "center" | "right" } {
+  if (count <= 1) return { x: 0, anchorX: "left" };
+  const t = index / (count - 1);
+  const anchorX = index === 0 ? "left" : index === count - 1 ? "right" : "center";
+  return { x: t * TEXT_MAX_WIDTH, anchorX };
+}
+
 // How far a card rises (world Y) when it becomes the focused one — shared
 // between TimelineCard's lift animation and the FOCUS_CAMERA derivation
 // below, since the latter needs to know exactly where the lifted card sits.
@@ -437,21 +453,24 @@ function TimelineCard({
       </Text>
 
       <group position={[TEXT_LEFT_X, LAYOUT.tagsY, FRONT_Z]}>
-        {stop.tags.slice(0, 3).map((tag, i) => (
-          <Text
-            key={tag}
-            font={FONT.sans}
-            position={[i * 0.98, 0, 0]}
-            fontSize={TYPE.tag.size}
-            lineHeight={TYPE.tag.lineHeight}
-            anchorX="left"
-            anchorY="middle"
-            color={useDarkText ? COLOR.surface : COLOR.white}
-            fillOpacity={useDarkText ? 0.6 : TYPE.tag.fillOpacity}
-          >
-            {tag}
-          </Text>
-        ))}
+        {stop.tags.slice(0, 3).map((tag, i, arr) => {
+          const { x, anchorX } = tagLayout(i, arr.length);
+          return (
+            <Text
+              key={tag}
+              font={FONT.sans}
+              position={[x, 0, 0]}
+              fontSize={TYPE.tag.size}
+              lineHeight={TYPE.tag.lineHeight}
+              anchorX={anchorX}
+              anchorY="middle"
+              color={useDarkText ? COLOR.surface : COLOR.white}
+              fillOpacity={useDarkText ? 0.6 : TYPE.tag.fillOpacity}
+            >
+              {tag}
+            </Text>
+          );
+        })}
       </group>
     </group>
   );
