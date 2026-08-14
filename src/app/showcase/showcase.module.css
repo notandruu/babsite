@@ -168,11 +168,11 @@
   position: absolute;
   left: 0;
   right: 0;
-  /* Must match the 0.6 (60%) bottomTarget passed to solveFocusCamera() in
+  /* Must match the 0.68 (68%) bottomTarget passed to solveFocusCamera() in
      ShowcaseScene.tsx — that call is what guarantees the focused card's
      bottom edge actually lands here, on any viewport, so this panel never
      overlaps the card. */
-  top: var(--sc-card-bottom, 60%);
+  top: var(--sc-card-bottom, 68%);
   z-index: 3;
   display: flex;
   flex-direction: column;

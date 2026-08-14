@@ -37,6 +37,13 @@ function easeOutBack(t: number) {
   return 1 + c3 * p * p * p + c1 * p * p;
 }
 
+// The numeral used to sit dead-center, which is exactly where the active
+// card always is — so the card just covered it. This puts it in the gap
+// between the DOM heading and the card row instead (browse-mode camera in
+// ShowcaseScene.tsx aims to keep that gap open), sized to actually fit it.
+const GLYPH_CENTER_Y_FRAC = 0.22;
+const GLYPH_FONT_FRAC = 0.14;
+
 interface LitCell {
   x: number;
   y: number;
@@ -118,8 +125,8 @@ export function ShowcaseHashBackground() {
       glyphCtx.fillStyle = "#fff";
       glyphCtx.textAlign = "center";
       glyphCtx.textBaseline = "middle";
-      glyphCtx.font = `600 ${Math.round(rows * 0.46)}px "Courier New", monospace`;
-      glyphCtx.fillText(TIMELINE_STOPS[index].year, cols / 2, rows / 2);
+      glyphCtx.font = `600 ${Math.round(rows * GLYPH_FONT_FRAC)}px "Courier New", monospace`;
+      glyphCtx.fillText(TIMELINE_STOPS[index].year, cols / 2, rows * GLYPH_CENTER_Y_FRAC);
       const data = glyphCtx.getImageData(0, 0, cols, rows).data;
       const lit: LitCell[] = [];
       for (let row = 0; row < rows; row++) {

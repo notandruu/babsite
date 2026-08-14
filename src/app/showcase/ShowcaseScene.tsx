@@ -47,11 +47,12 @@ function solveFocusCamera(topMargin: number, bottomTarget: number) {
   return { y, distance };
 }
 
-// Card top sits 8% down from the top of the frame; card bottom sits at 60%,
-// leaving a guaranteed 40% of the viewport for the DOM description/CTA
-// panel below it (showcase.module.css's --sc-card-bottom must match the
-// 60% here — see the comment on .focusInfo).
-const FOCUS_CAMERA = solveFocusCamera(0.08, 0.6);
+// Card spans 22%-68% of the frame — centers the card itself (not the card
+// plus the DOM panel below it) close to viewport-middle, rather than
+// pinning it to the top and leaving the panel stranded in a sea of empty
+// space underneath (showcase.module.css's --sc-card-bottom must match the
+// 68% here — see the comment on .focusInfo).
+const FOCUS_CAMERA = solveFocusCamera(0.22, 0.68);
 
 function useSnapshot(): ShowcaseSnapshot {
   const store = useShowcaseStoreContext();
@@ -72,8 +73,14 @@ const TRACK_DOT_SPACING = 0.34;
 const TRACK_OVERRUN = CARD_SPACING * 0.6;
 
 /** Ground-level dotted timeline track under the cards, with a year label at
- * each stop — instanced so the ~120 tick dots are one draw call. */
+ * each stop — instanced so the ~120 tick dots are one draw call. Scales
+ * itself to nothing while a card is focused: at that zoom the track reads
+ * as visually broken (built for browse-mode viewing distance, not a
+ * close-up), and its year labels end up sitting right where the focus
+ * panel's description/CTA renders. */
 function TimelineTrack() {
+  const store = useShowcaseStoreContext();
+  const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.InstancedMesh>(null);
 
   const dotPositions = useMemo(() => {
@@ -95,8 +102,16 @@ function TimelineTrack() {
     mesh.instanceMatrix.needsUpdate = true;
   }, [dotPositions]);
 
+  useFrame((_, delta) => {
+    const group = groupRef.current;
+    if (!group) return;
+    const target = store.getSnapshot().isFocused ? 0.0001 : 1;
+    const next = THREE.MathUtils.damp(group.scale.x, target, 6, delta);
+    group.scale.setScalar(next);
+  });
+
   return (
-    <group position={[0, TRACK_Y, FRONT_Z - 0.04]}>
+    <group ref={groupRef} position={[0, TRACK_Y, FRONT_Z - 0.04]}>
       <instancedMesh ref={meshRef} args={[undefined, undefined, dotPositions.length]}>
         <circleGeometry args={[0.013, 8]} />
         <meshBasicMaterial color={COLOR.white} transparent opacity={0.22} toneMapped={false} />
@@ -475,7 +490,11 @@ function CameraRig() {
       camera.position.x = THREE.MathUtils.damp(camera.position.x, targetX + px * 0.4, 10, delta);
       camera.position.y = THREE.MathUtils.damp(camera.position.y, 0.38 + py * 0.2, 5, delta);
       camera.position.z = THREE.MathUtils.damp(camera.position.z, 8.6, 5, delta);
-      camera.lookAt(targetX + px * 0.15, 0.1, 0);
+      // Aim a bit above the cards' own height (0 -> 0.24) so they settle
+      // lower in the frame, opening headroom above them for the background
+      // year — previously the numeral rendered dead-center and the card sat
+      // on top of it every time.
+      camera.lookAt(targetX + px * 0.15, 0.24, 0);
     }
     /* eslint-enable react-hooks/immutability */
   });
