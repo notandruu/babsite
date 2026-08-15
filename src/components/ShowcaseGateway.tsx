@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./showcaseGateway.module.css";
+import { riseWash } from "./transitionWash";
 
 const BLOCK_COUNT = 28;
 // Must stay in step with gwRise / gwRecede in the stylesheet: the route swap
@@ -20,13 +21,15 @@ export function ShowcaseGateway() {
   const router = useRouter();
   const sectionRef = useRef<HTMLElement>(null);
   const [progress, setProgress] = useState(0);
-  const [launching, setLaunching] = useState(false);
+  // A ref, not state: firing once is all this guards, and it must be
+  // effective immediately rather than on the next render.
   const launchedRef = useRef(false);
 
   const launch = useCallback(() => {
     if (launchedRef.current) return;
     launchedRef.current = true;
-    setLaunching(true);
+    // Mounted on <body>, not rendered here, so it outlives this page.
+    riseWash();
     try {
       sessionStorage.setItem(ARRIVAL_KEY, "1");
     } catch {
@@ -113,8 +116,6 @@ export function ShowcaseGateway() {
           Open the showcase timeline
         </a>
       </section>
-
-      {launching && <div className={`${styles.wash} ${styles.washRise}`} aria-hidden="true" />}
     </>
   );
 }

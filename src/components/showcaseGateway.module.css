@@ -104,63 +104,119 @@
    free, and the blur keeps it diffuse. */
 /* Full-viewport wash.
  *
- * Balanced left/right on purpose. An earlier pass placed the two ellipses at
- * 28% and 74% with the exit sweeping to the bottom-left, which made the
- * whole thing read as emerging from one corner rather than rising evenly off
- * the bottom edge. They're now mirrored around center, so the wave still
- * undulates but the motion is symmetric.
- *
- * Colors carry their own alpha rather than being solid: the wash is meant to
- * wash *over* the page, so the content stays faintly readable through it the
- * whole way rather than being replaced by a flat panel. */
+ * This element is created imperatively on <body> rather than rendered by a
+ * page component (see transitionWash.ts). It has to outlive the route
+ * change: when it belonged to the About page, Next unmounted it the instant
+ * navigation happened and the showcase then mounted a different node, so the
+ * wash visibly vanished at the seam instead of carrying you across.
+ */
 .wash {
   position: fixed;
   inset: 0;
   z-index: 9999;
   pointer-events: none;
+  opacity: 0;
   will-change: transform, opacity;
-  background:
-    radial-gradient(130% 60% at 34% 106%, rgba(246, 223, 158, 0.82), rgba(0, 0, 0, 0) 74%),
-    radial-gradient(130% 60% at 66% 106%, rgba(240, 201, 74, 0.74), rgba(0, 0, 0, 0) 74%),
-    linear-gradient(to top, rgba(224, 182, 50, 0.72) 0%, rgba(216, 169, 58, 0.4) 46%, rgba(0, 0, 0, 0) 82%);
-  filter: blur(34px);
+  /* Warm base so the layers have something to sit on, kept low-alpha so the
+     page below stays readable through it. */
+  background: linear-gradient(
+    to top,
+    rgba(214, 150, 62, 0.55) 0%,
+    rgba(224, 182, 50, 0.28) 44%,
+    rgba(0, 0, 0, 0) 84%
+  );
 }
 
-/* Rise: springs up past its resting point and settles back, which is where
-   the bounce comes from. The overshoot is in the easing curve, not a
-   separate keyframe, so it stays a single uninterrupted motion. */
-.washRise {
-  animation: gwRise 620ms cubic-bezier(0.34, 1.42, 0.5, 1) forwards;
+/* Four independently drifting colour fields rather than one static gradient.
+ * Each has its own hue, size, and cycle length, and because the cycles don't
+ * divide evenly they never resynchronise, so the surface keeps folding
+ * through itself instead of looping visibly. That continuous internal motion
+ * is what reads as "alive" the way Siri's does; a single flat gradient just
+ * looks like a coloured sheet no matter how it's eased.
+ *
+ * `screen` blending makes overlaps brighten rather than muddy, so where the
+ * fields cross you get light instead of paint. */
+.washLayer {
+  position: absolute;
+  inset: -30%;
+  mix-blend-mode: screen;
+  filter: blur(64px);
+  will-change: transform;
 }
-/* Recede: lifts and fades straight out rather than sliding to a corner, so
-   the exit is a dissolve rather than a wipe. Slower than the rise because a
-   fade needs longer than a move to read as deliberate. */
-.washRecede {
-  animation: gwRecede 780ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+/* Core gold — the brand note the rest is built around. */
+.layerA {
+  background: radial-gradient(46% 40% at 32% 76%, rgba(254, 203, 51, 0.95), rgba(0, 0, 0, 0) 70%);
+  animation: gwDriftA 6.5s ease-in-out infinite alternate;
+}
+/* Deeper amber, drifting against A so the two shear past each other. */
+.layerB {
+  background: radial-gradient(52% 44% at 70% 84%, rgba(236, 138, 60, 0.88), rgba(0, 0, 0, 0) 72%);
+  animation: gwDriftB 8.3s ease-in-out infinite alternate;
+}
+/* Pale highlight riding on top, which is what keeps it from reading flat. */
+.layerC {
+  background: radial-gradient(58% 46% at 50% 96%, rgba(255, 241, 205, 0.85), rgba(0, 0, 0, 0) 66%);
+  animation: gwDriftC 5.4s ease-in-out infinite alternate;
+}
+/* Coral, low and wide. Barely nameable on its own, but it's what stops the
+   whole thing from being "just yellow" — it gives the shadows a hue instead
+   of letting them fall to grey. */
+.layerD {
+  background: radial-gradient(64% 38% at 22% 100%, rgba(226, 116, 88, 0.6), rgba(0, 0, 0, 0) 68%);
+  animation: gwDriftD 9.7s ease-in-out infinite alternate;
 }
 
-@keyframes gwRise {
+/* Enter: springs up past its resting point and settles back. The overshoot
+   lives in the easing curve rather than a keyframe, so it stays one
+   uninterrupted motion. */
+.washIn {
+  animation: gwIn 720ms cubic-bezier(0.3, 1.5, 0.45, 1) forwards;
+}
+/* Exit: dissolves and expands slightly rather than sliding off, so the new
+   page emerges through it instead of being uncovered by it. */
+.washOut {
+  animation: gwOut 900ms cubic-bezier(0.24, 0.6, 0.32, 1) forwards;
+}
+
+@keyframes gwIn {
   from {
-    transform: translate3d(0, 100%, 0) scale(1.06);
+    transform: translate3d(0, 82%, 0) scale(1.08);
     opacity: 0;
   }
-  55% {
-    opacity: 0.92;
+  50% {
+    opacity: 0.95;
   }
   to {
-    transform: translate3d(0, 0, 0) scale(1.06);
-    opacity: 0.92;
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.95;
   }
 }
-@keyframes gwRecede {
+@keyframes gwOut {
   from {
-    transform: translate3d(0, 0, 0) scale(1.06);
-    opacity: 0.92;
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.95;
   }
   to {
-    transform: translate3d(0, -26%, 0) scale(1.22);
+    transform: translate3d(0, -14%, 0) scale(1.16);
     opacity: 0;
   }
+}
+
+@keyframes gwDriftA {
+  from { transform: translate3d(-7%, 3%, 0) scale(1); }
+  to   { transform: translate3d(6%, -5%, 0) scale(1.18); }
+}
+@keyframes gwDriftB {
+  from { transform: translate3d(8%, -2%, 0) scale(1.12); }
+  to   { transform: translate3d(-6%, 5%, 0) scale(0.96); }
+}
+@keyframes gwDriftC {
+  from { transform: translate3d(3%, 6%, 0) scale(1.05); }
+  to   { transform: translate3d(-4%, -4%, 0) scale(1.24); }
+}
+@keyframes gwDriftD {
+  from { transform: translate3d(-5%, 2%, 0) scale(1.1); }
+  to   { transform: translate3d(9%, -3%, 0) scale(0.92); }
 }
 @keyframes gwBlink {
   50% {
@@ -169,10 +225,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .washRise,
-  .washRecede {
+  .washIn,
+  .washOut {
     animation-duration: 1ms;
   }
+  .washLayer,
   .caret {
     animation: none;
   }
