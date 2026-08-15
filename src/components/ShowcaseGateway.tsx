@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import styles from "./showcaseGateway.module.css";
 
 const BLOCK_COUNT = 28;
-// Matches the measured hold in the reference: the wash sits at full coverage
-// for roughly this long while the next route swaps in underneath it.
-const HOLD_MS = 420;
-const RISE_MS = 210;
+// Must stay in step with gwRise / gwRecede in the stylesheet: the route swap
+// is timed to happen while the wash is at full coverage, so if these drift
+// shorter than the animation the navigation shows through mid-rise.
+const RISE_MS = 620;
+const HOLD_MS = 520;
 
 /** Set just before navigating so /showcase knows to play the exit half of
  * the transition on arrival. sessionStorage (not a query param) keeps the

@@ -36,6 +36,8 @@ export function ShowcaseArrival() {
 
     el.hidden = false;
     el.classList.add(styles.washRecede);
+    // Held one frame at full coverage before the fade starts, so arriving
+    // mid-animation never flashes the page underneath.
 
     // Hide again once it's done so the overlay isn't left sitting over an
     // interactive WebGL canvas.

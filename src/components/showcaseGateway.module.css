@@ -102,6 +102,17 @@
    reference's leading edge undulates across the width instead of rising as
    a flat line; overlapping them at different heights produces that wave for
    free, and the blur keeps it diffuse. */
+/* Full-viewport wash.
+ *
+ * Balanced left/right on purpose. An earlier pass placed the two ellipses at
+ * 28% and 74% with the exit sweeping to the bottom-left, which made the
+ * whole thing read as emerging from one corner rather than rising evenly off
+ * the bottom edge. They're now mirrored around center, so the wave still
+ * undulates but the motion is symmetric.
+ *
+ * Colors carry their own alpha rather than being solid: the wash is meant to
+ * wash *over* the page, so the content stays faintly readable through it the
+ * whole way rather than being replaced by a flat panel. */
 .wash {
   position: fixed;
   inset: 0;
@@ -109,40 +120,45 @@
   pointer-events: none;
   will-change: transform, opacity;
   background:
-    radial-gradient(120% 58% at 28% 104%, #f4dc98, rgba(0, 0, 0, 0) 72%),
-    radial-gradient(135% 66% at 74% 108%, #f0c94a, rgba(0, 0, 0, 0) 74%),
-    linear-gradient(to top, #e0b632 0%, #d8a93a 42%, rgba(0, 0, 0, 0) 78%);
-  filter: blur(26px);
+    radial-gradient(130% 60% at 34% 106%, rgba(246, 223, 158, 0.82), rgba(0, 0, 0, 0) 74%),
+    radial-gradient(130% 60% at 66% 106%, rgba(240, 201, 74, 0.74), rgba(0, 0, 0, 0) 74%),
+    linear-gradient(to top, rgba(224, 182, 50, 0.72) 0%, rgba(216, 169, 58, 0.4) 46%, rgba(0, 0, 0, 0) 82%);
+  filter: blur(34px);
 }
 
-/* Rise: enters from below, overshoots slightly past full so the leading
-   wave clears the top edge instead of parking mid-screen. */
+/* Rise: springs up past its resting point and settles back, which is where
+   the bounce comes from. The overshoot is in the easing curve, not a
+   separate keyframe, so it stays a single uninterrupted motion. */
 .washRise {
-  animation: gwRise 210ms cubic-bezier(0.32, 0, 0.24, 1) forwards;
+  animation: gwRise 620ms cubic-bezier(0.34, 1.42, 0.5, 1) forwards;
 }
-/* Recede: diagonal clear toward the bottom-left, matching the reference's
-   exit rather than simply reversing the entrance. */
+/* Recede: lifts and fades straight out rather than sliding to a corner, so
+   the exit is a dissolve rather than a wipe. Slower than the rise because a
+   fade needs longer than a move to read as deliberate. */
 .washRecede {
-  animation: gwRecede 520ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: gwRecede 780ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
 }
 
 @keyframes gwRise {
   from {
-    transform: translate3d(0, 100%, 0) scale(1.1);
-    opacity: 0.5;
+    transform: translate3d(0, 100%, 0) scale(1.06);
+    opacity: 0;
+  }
+  55% {
+    opacity: 0.92;
   }
   to {
-    transform: translate3d(0, -6%, 0) scale(1.1);
-    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.06);
+    opacity: 0.92;
   }
 }
 @keyframes gwRecede {
   from {
-    transform: translate3d(0, -6%, 0) scale(1.1);
-    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.06);
+    opacity: 0.92;
   }
   to {
-    transform: translate3d(-46%, 78%, 0) scale(1.35);
+    transform: translate3d(0, -26%, 0) scale(1.22);
     opacity: 0;
   }
 }
