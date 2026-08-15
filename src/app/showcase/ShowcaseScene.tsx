@@ -550,7 +550,14 @@ function SceneReadySignal({ onReady }: { onReady?: () => void }) {
   useFrame(() => {
     if (fired.current || !onReady) return;
     if (gl.domElement.width <= 300) return; // still at the default size
-    if (++frames.current < 2) return; // one full frame actually painted
+    // Settled, not merely mounted. Two frames only proves a canvas exists;
+    // the scene is still working through its first real renders at that
+    // point, and firing there let the gateway tide begin clearing while the
+    // page underneath was visibly still assembling — two crossfades running
+    // over each other, which is what read as clunky. Waiting for a run of
+    // frames costs nothing when the thing that's waiting is hidden behind an
+    // opaque cover.
+    if (++frames.current < 12) return;
     fired.current = true;
     onReady();
   });

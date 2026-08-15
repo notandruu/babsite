@@ -317,6 +317,8 @@ class GatewayEngine {
       this.raf = requestAnimationFrame(this.frame);
       return;
     }
+    // Strata and beam ride the global fade; the hex field is exempted below
+    // so it can settle rather than disappear.
     ctx.globalAlpha = globalAlpha;
 
     // Shimmer: a few cells re-roll each frame so the field reads as a live
@@ -415,13 +417,28 @@ class GatewayEngine {
       }
     }
 
-    // 4 — the dithered hash field. Presence per cell is a fixed threshold
+    // 4 — the dithered hash field. During the clear this does NOT fade with
+    // everything else: it settles into the showcase's own ambient hex field.
+    //
+    // The reference's handover is invisible because its flood colour equals
+    // its destination's background, so there is simply nothing to notice. We
+    // can't borrow that — our destination is near-black. But the tide and the
+    // showcase background are made of the same thing: a gold hex character
+    // field. So rather than dissolving and leaving a hole for the page to
+    // appear in, the field thins toward the density and brightness of the
+    // field already rendering underneath, and the canvas is dropped only once
+    // the two are indistinguishable. Continuity of material instead of
+    // continuity of colour. Presence per cell is a fixed threshold
     // against local density, so the leading edge is a ragged dither that
     // thins to nothing — a mask fade dims all cells together, which is what
     // produced every hard seam this replaced.
+    ctx.globalAlpha = 1;
     ctx.font = `${FONT_PX}px ui-monospace, "SF Mono", Menlo, monospace`;
     ctx.textBaseline = "top";
     const edgeDepth = Math.max(0.03, EDGE * reach);
+    // 1 while flooding, falling to 0 as the tide settles into the ambient
+    // field. Drives both how much of the grid stays lit and how bright it is.
+    const settle = 1 - coolT;
     for (let row = 0; row < this.rows; row++) {
       const yFrac = (row * CELL_H) / h;
       // Quick reject: rows far above any possible crest.
@@ -432,11 +449,18 @@ class GatewayEngine {
         if (depth <= 0) continue;
         const density = depth > 1 ? 1 : depth;
         const i = row * this.cols + col;
-        if (this.thresholds[i] > density) continue;
+        // As the tide settles, the lit set thins toward the sparse ambient
+        // density of the showcase's own field rather than all cells dimming
+        // together — the same dither logic that keeps the rising edge from
+        // showing a seam keeps the handover from showing one.
+        const keep = 0.06 + 0.94 * settle;
+        if (this.thresholds[i] > density * keep) continue;
         const bright = this.brightness[i];
-        const a = floodT > 0
+        const ambient = 0.055 * bright; // matches the showcase field's floor
+        const lit = floodT > 0
           ? 0.1 + 0.16 * bright // over strata: quiet texture
           : bright * (0.14 + 0.6 * density) * (0.35 + 0.65 * this.charge);
+        const a = ambient + (lit - ambient) * settle;
         ctx.fillStyle = `rgba(254, 203, 51, ${a.toFixed(3)})`;
         ctx.fillText(this.chars[i], col * CELL_W, row * CELL_H);
       }

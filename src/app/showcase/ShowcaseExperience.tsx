@@ -38,6 +38,14 @@ export function ShowcaseExperience() {
   const [timedOut, setTimedOut] = useState(false);
   const ready = sceneReady || timedOut;
 
+  // Whether this load came through the gateway. Read once, lazily, so it is
+  // known on the very first render — the entrance animation below has to be
+  // suppressed before it can play, not switched off after the fact.
+  const [arrivedViaTide] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return consumeArrivalFlag();
+  });
+
   useEffect(() => {
     // Backstop, in case a texture never resolves — show the scene anyway.
     const failsafe = setTimeout(() => setTimedOut(true), 3000);
@@ -51,15 +59,9 @@ export function ShowcaseExperience() {
   // rather than on a timer — a timer let it finish while this page was still
   // mounting, exposing a dead stretch of empty page between the tide leaving
   // and the cards arriving.
-  const arrivedRef = useRef(false);
-  const initedRef = useRef(false);
   useEffect(() => {
-    if (!initedRef.current) {
-      initedRef.current = true;
-      arrivedRef.current = consumeArrivalFlag();
-    }
-    if (arrivedRef.current && ready) peekGatewayEngine()?.clearWhenReady();
-  }, [ready]);
+    if (arrivedViaTide && ready) peekGatewayEngine()?.clearWhenReady();
+  }, [arrivedViaTide, ready]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -124,7 +126,7 @@ export function ShowcaseExperience() {
         style={{ touchAction: "none" }}
       >
         {/* Layer 1 — up immediately, needs no assets. */}
-        <ShowcaseHashBackground />
+        <ShowcaseHashBackground instant={arrivedViaTide} />
 
         {/* Layer 2 — the cards, revealed together once genuinely ready,
             settling into a field that's already alive behind them. Keeping
@@ -134,14 +136,22 @@ export function ShowcaseExperience() {
         <div
           className="absolute inset-0"
           style={{
-            opacity: ready ? 1 : 0,
-            transform: ready ? "scale(1)" : "scale(1.012)",
+            // Arriving through the gateway, the tide is the transition and
+            // this layer must not run one of its own — a second crossfade
+            // underneath the first is what made the handover feel mushy, and
+            // it means the page is still resolving at the moment the cover
+            // comes off. Behind an opaque tide there is nothing to reveal, so
+            // it renders finished and waits. Direct visits keep the entrance.
+            opacity: arrivedViaTide || ready ? 1 : 0,
+            transform: arrivedViaTide || ready ? "scale(1)" : "scale(1.012)",
             // Opacity lands fast so the cards feel present almost at once;
             // the settle runs a little longer and on its own curve, which
             // keeps it from reading as an abrupt cut without holding the
             // content back. Starting scale is small for the same reason —
             // a bigger one needs more time to travel.
-            transition: "opacity 260ms ease-out, transform 460ms cubic-bezier(0.16,1,0.3,1)",
+            transition: arrivedViaTide
+              ? "none"
+              : "opacity 260ms ease-out, transform 460ms cubic-bezier(0.16,1,0.3,1)",
           }}
         >
           <Canvas

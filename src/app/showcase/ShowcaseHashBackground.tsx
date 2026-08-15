@@ -127,18 +127,22 @@ interface DigitSlot {
   resolveUntil: number;
 }
 
-export function ShowcaseHashBackground() {
+export function ShowcaseHashBackground({ instant = false }: { instant?: boolean } = {}) {
   const store = useShowcaseStoreContext();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // The field needs no assets, so it comes up immediately and carries the
   // first moment on its own while the heavier 3D layer is still resolving.
   // That's what keeps the load from being a blank stare followed by
   // everything arriving at once.
-  const [shown, setShown] = useState(false);
+  // `instant` skips this fade entirely: when the gateway tide is covering the
+  // viewport there is nothing to fade in front of, and a fade here would just
+  // be a third crossfade competing with the tide's clear.
+  const [shown, setShown] = useState(instant);
   useEffect(() => {
+    if (instant) return;
     const id = requestAnimationFrame(() => setShown(true));
     return () => cancelAnimationFrame(id);
-  }, []);
+  }, [instant]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -369,7 +373,7 @@ export function ShowcaseHashBackground() {
         // Kept just ahead of the card layer's fade so the field is
         // established first and the cards land into something, rather than
         // the two racing each other.
-        transition: "opacity 300ms ease-out",
+        transition: instant ? "none" : "opacity 300ms ease-out",
       }}
     />
   );
