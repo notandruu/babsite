@@ -1,0 +1,241 @@
+/*
+ * Transition Lab chrome. All motion that matters lives on canvas
+ * (TransitionLab.tsx); this file only styles the two views and the
+ * blur-in assembly stagger.
+ */
+
+.root {
+  min-height: 100svh;
+  background: rgb(23, 23, 23);
+  color: rgba(255, 255, 255, 0.92);
+  font-family: var(--font-instrument-sans), system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.veil {
+  position: fixed;
+  /* Oversized and blurred: the blur melts the low-res paint's stair-steps
+     into the reference's mushy edges, and the overshoot hides the blur's
+     transparent fringe at the viewport border. */
+  inset: -48px;
+  width: calc(100vw + 96px);
+  height: calc(100vh + 96px);
+  pointer-events: none;
+  z-index: 60;
+  opacity: 0;
+  filter: blur(30px);
+  image-rendering: auto;
+}
+
+.page {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 26px;
+  padding: 72px clamp(24px, 7vw, 120px);
+}
+
+/* Assembly stagger: opacity plus blur resolving, offset per element via --d.
+   Measured off the reference: the landing copy sharpens top-down with the
+   tail of the headline lagging the rest. */
+.in {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(6px);
+  animation: labIn 460ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  animation-delay: var(--d, 0ms);
+}
+@keyframes labIn {
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+
+/* ------------------------------- index view ------------------------------ */
+
+.title {
+  font-size: clamp(32px, 4.5vw, 54px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  max-width: 560px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  max-width: 640px;
+  padding: 14px 18px;
+  border: 1px solid rgba(232, 114, 42, 0.35);
+  background: rgba(232, 114, 42, 0.1);
+  border-radius: 10px;
+}
+
+.entryMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.entryRole {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.entrySub {
+  font-family: var(--font-dm-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.cta {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(232, 114, 42);
+  color: rgb(23, 23, 23);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease;
+}
+.cta:hover {
+  background: rgb(244, 138, 66);
+  transform: translateY(-1px);
+}
+
+.hint {
+  font-family: var(--font-dm-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+/* ------------------------------- study view ------------------------------ */
+
+.studyHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.back {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: var(--font-dm-mono), ui-monospace, monospace;
+  font-size: 11px;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+.back:hover {
+  color: rgb(232, 114, 42);
+}
+
+.brandName {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.brandRole {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.headline {
+  max-width: 520px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.studyBody {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr) 200px;
+  gap: 32px;
+  align-items: start;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.navItem {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.panel {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3.4;
+  max-height: 62vh;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgb(20, 20, 20);
+}
+
+.panelCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.note {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+@media (max-width: 860px) {
+  .studyBody {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .in {
+    animation: none;
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
