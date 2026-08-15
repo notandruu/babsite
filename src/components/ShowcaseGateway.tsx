@@ -6,9 +6,10 @@ import styles from "./showcaseGateway.module.css";
 import { getGatewayEngine, peekGatewayEngine } from "./gatewayEngine";
 
 const BLOCK_COUNT = 28;
-// How long after the tide commits before the route swaps. The flood needs to
-// have covered the viewport by then, or the navigation shows through it.
-const NAV_DELAY_MS = 620;
+// How long after the tide commits before the route swaps. Must outlast the
+// engine's flood (150ms) so the viewport is fully covered when the route
+// changes, with a little slack for a dropped frame.
+const NAV_DELAY_MS = 210;
 
 /**
  * The terminal readout at the foot of the About page, and the input surface

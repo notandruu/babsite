@@ -53,7 +53,13 @@ const EDGE = 0.55;
 const DECAY = 0.55;
 // Wheel pixels → charge.
 const PUMP_GAIN = 1 / 2400;
-const FLOOD_MS = 700;
+// Matched to the reference, measured at 120fps: its crest goes from first
+// glow to full coverage in about 150ms. Earlier builds ran this ~5x slower
+// after 210ms was called too fast, but that was the old rise, which started
+// from nothing; here the tide is already at full charge and half a screen
+// high when it commits, so the flood is only finishing a climb you have
+// already been driving by hand.
+const FLOOD_MS = 150;
 const CLEAR_MS = 800;
 const HOLD_CAP_MS = 4500;
 
