@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./showcaseGateway.module.css";
 import { riseWash } from "./transitionWash";
+import { GatewayHashField } from "./GatewayHashField";
 
 const BLOCK_COUNT = 28;
 // Must stay in step with gwRise / gwRecede in the stylesheet: the route swap
@@ -98,7 +99,7 @@ export function ShowcaseGateway() {
         }
       >
         <div className={styles.gatewayGlow} aria-hidden="true" />
-        <div className={styles.dots} aria-hidden="true" />
+        <GatewayHashField progress={progress} />
 
         <p className={styles.command}>
           <span className={styles.prompt}>bab@berkeley ~ %</span> showcase --timeline
@@ -112,7 +113,9 @@ export function ShowcaseGateway() {
             ))}
           </span>
           <span className={styles.meterLabel}>
-            {progress >= 0.995 ? "entering /showcase" : `${Math.round(progress * 100)}%`}
+            {progress >= 0.995
+              ? "entering /showcase"
+              : `hashing timeline… ${Math.round(progress * 100)}%`}
           </span>
         </div>
 
