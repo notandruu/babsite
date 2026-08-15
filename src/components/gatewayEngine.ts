@@ -272,8 +272,19 @@ class GatewayEngine {
     }
 
     let globalAlpha = 1;
+    // How far the tide has cooled toward the showcase's own backdrop.
+    //
+    // The reference's exit looks effortless for a reason that has nothing to
+    // do with its motion: its destination page is already warm peach, so the
+    // wash clears into a colour it already matches and there is simply no
+    // change to notice. Ours clears into a near-black page, so an identical
+    // fade reads as the light being switched off. Cooling the tide toward the
+    // showcase's surface as it goes reproduces his continuity rather than his
+    // mechanics — the light doesn't leave, it becomes the page.
+    let coolT = 0;
     if (this.phaseName === "clearing") {
       const ct = Math.min(1, (now - this.clearStart) / (this.reduced ? 1 : CLEAR_MS));
+      coolT = easeInOut(Math.min(1, ct * 1.25));
       globalAlpha = 1 - easeInOut(ct);
       if (ct >= 1) {
         this.destroy();
@@ -342,7 +353,10 @@ class GatewayEngine {
         // so the flood read as stacked paper cut-outs instead of light —
         // the single biggest difference from the reference, which has
         // boundaries you can barely locate.
-        const [r, g, b] = band.color;
+        const [br, bg, bb] = band.color;
+        const r = Math.round(br + (12 - br) * coolT);
+        const g = Math.round(bg + (12 - bg) * coolT);
+        const b = Math.round(bb + (12 - bb) * coolT);
         const crestMid = crestAtU(0.5) + band.gap * (0.9 - 0.4 * floodT);
         const g0 = crestMid * h;
         const grad = ctx.createLinearGradient(0, g0 - h * 0.03, 0, g0 + h * 0.26);
@@ -386,7 +400,10 @@ class GatewayEngine {
         const widthMul = 0.5 + 5.5 * f * f;
         const alphaMul = Math.pow(1 - f, 0.85) * 0.34 + 0.02;
         tracePath();
-        ctx.strokeStyle = `rgba(255, 233, 178, ${(beamA * alphaMul).toFixed(4)})`;
+        const beamR = Math.round(255 + (24 - 255) * coolT);
+        const beamG = Math.round(233 + (22 - 233) * coolT);
+        const beamB = Math.round(178 + (18 - 178) * coolT);
+        ctx.strokeStyle = `rgba(${beamR}, ${beamG}, ${beamB}, ${(beamA * alphaMul).toFixed(4)})`;
         ctx.lineWidth = base * widthMul;
         ctx.stroke();
       }
