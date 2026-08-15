@@ -4,7 +4,6 @@ import { useState } from "react"
 import { PageNav } from "@/components/PageNav"
 import { PageFooter } from "@/components/PageFooter"
 import { BlogPosts } from "@/components/BlogPosts"
-import { ShowcaseGateway } from "@/components/ShowcaseGateway"
 
 const stats = [
   { value: "10+",   label: "Startups Founded" },
@@ -195,10 +194,6 @@ export default function AboutPage() {
 
       <BlogPosts />
       <PageFooter />
-      {/* Last element on the page on purpose: the meter completes exactly at
-          the bottom of the document, so the footer stays reachable on the
-          way down instead of the transition firing over it. */}
-      <ShowcaseGateway />
     </div>
   )
 }
