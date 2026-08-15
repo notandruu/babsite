@@ -26,7 +26,11 @@
   justify-content: center;
   gap: 18px;
   padding: 80px 24px;
-  overflow: hidden;
+  /* No overflow:hidden. Clipping here cut the glow's blur halo off at the
+     section boundary, which turned a soft falloff into a hard horizontal
+     line that visibly travelled up the screen as you scrolled. The glow's
+     gradients already fade to transparent well inside their own box, so
+     there's nothing that needs clipping. */
 }
 
 /* The ambient glow that builds under the terminal line as you scroll in,
@@ -47,6 +51,42 @@
     radial-gradient(140% 70% at 76% 100%, rgba(224, 182, 50, 0.66), rgba(0, 0, 0, 0) 72%);
   filter: blur(42px);
   transition: opacity 120ms linear;
+}
+
+/* Halftone dot field, matching the reference: as the glow builds, the light
+ * at the bottom of the page resolves into a dot grid rather than a smooth
+ * wash, which is what ties it to the hex/ASCII texture used elsewhere on the
+ * site. Masked so the dots are dense at the bottom edge and dissolve upward,
+ * so there's no boundary where the pattern visibly stops.
+ *
+ * Sized in px rather than em so the grid stays put regardless of type scale. */
+.dots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Its own ramp, not the glow's. Sharing the glow's steep curve kept the
+     dots at ~1% opacity for most of the approach, so the texture only
+     existed for the last instant. They should establish early and let the
+     colour bloom catch up. */
+  opacity: var(--gw-dots, 0);
+  background-image: radial-gradient(rgba(255, 214, 140, 0.85) 1px, rgba(0, 0, 0, 0) 1.7px);
+  background-size: 8px 8px;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.55) 26%, transparent 62%);
+  mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.55) 26%, transparent 62%);
+  transition: opacity 120ms linear;
+}
+
+/* Same grid, carried inside the wash so the dots survive into the
+   transition instead of vanishing the moment it fires. */
+.washDots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background-image: radial-gradient(rgba(255, 224, 165, 0.7) 1px, rgba(0, 0, 0, 0) 1.8px);
+  background-size: 8px 8px;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.5) 34%, transparent 72%);
+  mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.5) 34%, transparent 72%);
 }
 
 .command {
@@ -162,7 +202,9 @@
    whole thing from being "just yellow" — it gives the shadows a hue instead
    of letting them fall to grey. */
 .layerD {
-  background: radial-gradient(64% 38% at 22% 100%, rgba(226, 116, 88, 0.6), rgba(0, 0, 0, 0) 68%);
+  background:
+    radial-gradient(70% 44% at 20% 100%, rgba(226, 108, 78, 0.82), rgba(0, 0, 0, 0) 70%),
+    radial-gradient(52% 34% at 84% 92%, rgba(216, 94, 96, 0.5), rgba(0, 0, 0, 0) 72%);
   animation: gwDriftD 9.7s ease-in-out infinite alternate;
 }
 
@@ -173,9 +215,16 @@
   animation: gwIn 720ms cubic-bezier(0.3, 1.5, 0.45, 1) forwards;
 }
 /* Exit: dissolves and expands slightly rather than sliding off, so the new
-   page emerges through it instead of being uncovered by it. */
+   page emerges through it instead of being uncovered by it.
+ *
+ * The curve deliberately front-loads almost no opacity change. An ease-out
+ * here dumped roughly two thirds of the alpha in the first ~200ms, so on
+ * arrival the wash appeared to blink off and then spend the remainder as an
+ * invisible tail — technically animating, but nothing to see. Holding near
+ * full through the first third is what makes it actually read as washing
+ * over the showcase before it clears. */
 .washOut {
-  animation: gwOut 900ms cubic-bezier(0.24, 0.6, 0.32, 1) forwards;
+  animation: gwOut 1150ms cubic-bezier(0.5, 0.02, 0.35, 1) forwards;
 }
 
 @keyframes gwIn {
@@ -192,31 +241,42 @@
   }
 }
 @keyframes gwOut {
-  from {
+  0% {
     transform: translate3d(0, 0, 0) scale(1);
     opacity: 0.95;
   }
-  to {
-    transform: translate3d(0, -14%, 0) scale(1.16);
+  /* Holds high while the showcase settles in underneath, so you actually
+     see it sitting over the new page rather than catching only its tail. */
+  32% {
+    transform: translate3d(0, -3%, 0) scale(1.05);
+    opacity: 0.88;
+  }
+  100% {
+    transform: translate3d(0, -18%, 0) scale(1.22);
     opacity: 0;
   }
 }
 
+/* Wider travel than before. At the previous amplitudes the fields technically
+   moved but the surface still read as static, because each one only shifted
+   a fraction of its own blurred radius — nothing ever crossed anything else.
+   These push far enough that the fields genuinely swap places, which is what
+   makes the light look like it's folding rather than breathing in place. */
 @keyframes gwDriftA {
-  from { transform: translate3d(-7%, 3%, 0) scale(1); }
-  to   { transform: translate3d(6%, -5%, 0) scale(1.18); }
+  from { transform: translate3d(-16%, 7%, 0) scale(0.94); }
+  to   { transform: translate3d(14%, -11%, 0) scale(1.3); }
 }
 @keyframes gwDriftB {
-  from { transform: translate3d(8%, -2%, 0) scale(1.12); }
-  to   { transform: translate3d(-6%, 5%, 0) scale(0.96); }
+  from { transform: translate3d(18%, -6%, 0) scale(1.24); }
+  to   { transform: translate3d(-15%, 12%, 0) scale(0.9); }
 }
 @keyframes gwDriftC {
-  from { transform: translate3d(3%, 6%, 0) scale(1.05); }
-  to   { transform: translate3d(-4%, -4%, 0) scale(1.24); }
+  from { transform: translate3d(9%, 14%, 0) scale(1.02); }
+  to   { transform: translate3d(-12%, -9%, 0) scale(1.36); }
 }
 @keyframes gwDriftD {
-  from { transform: translate3d(-5%, 2%, 0) scale(1.1); }
-  to   { transform: translate3d(9%, -3%, 0) scale(0.92); }
+  from { transform: translate3d(-13%, 6%, 0) scale(1.18); }
+  to   { transform: translate3d(20%, -8%, 0) scale(0.86); }
 }
 @keyframes gwBlink {
   50% {

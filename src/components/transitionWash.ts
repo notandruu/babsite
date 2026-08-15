@@ -36,6 +36,12 @@ export function riseWash(): void {
     el.appendChild(child);
   }
 
+  // Dots go on last so they sit above the colour fields — they're a texture
+  // over the light, not another light source.
+  const dots = document.createElement("div");
+  dots.className = styles.washDots;
+  el.appendChild(dots);
+
   document.body.appendChild(el);
 }
 

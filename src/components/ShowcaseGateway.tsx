@@ -90,9 +90,15 @@ export function ShowcaseGateway() {
         // reference stays near-black for most of the approach and only
         // blooms in the last stretch, so a straight 1:1 mapping reads as a
         // warm haze hanging around far too early.
-        style={{ ["--gw-glow" as string]: Math.pow(progress, 2.2).toFixed(3) }}
+        style={
+          {
+            "--gw-glow": Math.pow(progress, 2.2).toFixed(3),
+            "--gw-dots": Math.pow(progress, 1.15).toFixed(3),
+          } as React.CSSProperties
+        }
       >
         <div className={styles.gatewayGlow} aria-hidden="true" />
+        <div className={styles.dots} aria-hidden="true" />
 
         <p className={styles.command}>
           <span className={styles.prompt}>bab@berkeley ~ %</span> showcase --timeline
