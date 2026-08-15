@@ -4,6 +4,7 @@ import { useState } from "react"
 import { PageNav } from "@/components/PageNav"
 import { PageFooter } from "@/components/PageFooter"
 import { BlogPosts } from "@/components/BlogPosts"
+import { ShowcaseGateway } from "@/components/ShowcaseGateway"
 
 const stats = [
   { value: "10+",   label: "Startups Founded" },
@@ -194,6 +195,9 @@ export default function AboutPage() {
 
       <BlogPosts />
       <PageFooter />
+      {/* Last element on the page: the tide charges on wheel input once the
+          document can't scroll further, so the footer stays reachable. */}
+      <ShowcaseGateway />
     </div>
   )
 }

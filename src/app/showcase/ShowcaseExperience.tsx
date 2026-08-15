@@ -7,6 +7,7 @@ import { ShowcaseHud } from "./ShowcaseHud";
 import { ShowcaseHashBackground } from "./ShowcaseHashBackground";
 import { ShowcaseStore, ShowcaseStoreContext } from "./useShowcaseStore";
 import { TIMELINE_STOPS } from "./data";
+import { consumeArrivalFlag, peekGatewayEngine } from "@/components/gatewayEngine";
 
 export function ShowcaseExperience() {
   const [store] = useState(() => new ShowcaseStore(TIMELINE_STOPS.length));
@@ -44,6 +45,21 @@ export function ShowcaseExperience() {
   }, []);
 
   const handleSceneReady = useCallback(() => setSceneReady(true), []);
+
+  // If we arrived through the gateway, its tide is still covering the
+  // viewport. Clearing it is gated on the scene actually being rendered
+  // rather than on a timer — a timer let it finish while this page was still
+  // mounting, exposing a dead stretch of empty page between the tide leaving
+  // and the cards arriving.
+  const arrivedRef = useRef(false);
+  const initedRef = useRef(false);
+  useEffect(() => {
+    if (!initedRef.current) {
+      initedRef.current = true;
+      arrivedRef.current = consumeArrivalFlag();
+    }
+    if (arrivedRef.current && ready) peekGatewayEngine()?.clearWhenReady();
+  }, [ready]);
 
   useEffect(() => {
     const el = containerRef.current;

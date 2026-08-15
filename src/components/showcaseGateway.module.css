@@ -1,0 +1,92 @@
+/*
+ * Chrome for the gateway. All the light — glow, field, wave, flood — is drawn
+ * by the canvas engine (gatewayEngine.ts); nothing here paints the tide.
+ * These are just the terminal readout that sits in front of it.
+ */
+
+.gateway {
+  position: relative;
+  /* Height is the runway. The tide is charged by wheel input while this
+     section is on screen, so it needs room to sit in view while you push. */
+  min-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 80px 24px;
+}
+
+.command {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-dm-mono), ui-monospace, "SF Mono", monospace;
+  font-size: clamp(15px, 2.4vw, 30px);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.92);
+}
+.prompt {
+  color: rgba(255, 255, 255, 0.32);
+}
+.caret {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.05em;
+  margin-left: 0.12em;
+  vertical-align: -0.16em;
+  background: var(--color-gold, #fecb33);
+  animation: gwBlink 1s steps(1) infinite;
+}
+
+/* Segmented rather than a continuous fill — the reference's meter is discrete
+   blocks, which is what makes it read as a terminal progress meter instead of
+   a browser loading bar. */
+.meter {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-dm-mono), ui-monospace, "SF Mono", monospace;
+  font-size: 11px;
+}
+.blocks {
+  display: flex;
+  gap: 2px;
+}
+.block {
+  width: 9px;
+  height: 13px;
+  background: rgba(255, 255, 255, 0.09);
+  transition: background 90ms linear;
+}
+.blockOn {
+  background: var(--color-gold, #fecb33);
+}
+.meterLabel {
+  color: var(--color-gold, #fecb33);
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-dm-mono), ui-monospace, "SF Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+@keyframes gwBlink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caret {
+    animation: none;
+  }
+}
