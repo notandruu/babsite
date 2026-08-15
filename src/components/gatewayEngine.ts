@@ -82,6 +82,7 @@ class GatewayEngine {
   private clearStart = 0;
   private holdSince = 0;
   private pendingClear = false;
+  private appliedBlur = -1;
 
   private cols = 0;
   private rows = 0;
@@ -110,6 +111,14 @@ class GatewayEngine {
     if (!ctx) throw new Error("2d context unavailable");
     this.ctx = ctx;
     document.body.appendChild(this.canvas);
+
+    // Dev-only handle. The flood is a sub-second window that can't be caught
+    // reliably by driving synthetic scroll and screenshotting, so this lets
+    // it be stepped to an exact progress value and inspected frame by frame
+    // against the reference. Stripped from production builds.
+    if (process.env.NODE_ENV !== "production") {
+      (window as unknown as Record<string, unknown>).__gatewayTide = this;
+    }
 
     this.resize = this.resize.bind(this);
     this.frame = this.frame.bind(this);
@@ -272,6 +281,19 @@ class GatewayEngine {
       }
     }
 
+    // Blur ramps with the flood, not before it. The tide is light rather
+    // than geometry, and unblurred sine crests render as crisp cut-out edges
+    // where the reference's boundaries are diffuse enough to be hard to
+    // locate. It can't be a constant, though: the hash field has to stay
+    // legibly sharp during the whole charging phase, so diffusion only
+    // arrives as the flood does. CSS-side so the wave maths stays exact and
+    // the GPU does the work.
+    const blurPx = floodT * 32;
+    if (Math.abs(blurPx - this.appliedBlur) > 0.5) {
+      this.appliedBlur = blurPx;
+      this.canvas.style.filter = blurPx > 0.5 ? `blur(${blurPx.toFixed(1)}px)` : "none";
+    }
+
     // ── draw ──
     ctx.clearRect(0, 0, w, h);
     if (reach <= 0.002) {
@@ -315,13 +337,62 @@ class GatewayEngine {
         }
         ctx.lineTo(w, h);
         ctx.closePath();
+        // Fade each stratum in over a short distance below its own crest
+        // rather than filling flat. Flat fills gave every band a hard edge,
+        // so the flood read as stacked paper cut-outs instead of light —
+        // the single biggest difference from the reference, which has
+        // boundaries you can barely locate.
         const [r, g, b] = band.color;
-        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${band.alpha * floodT})`;
+        const crestMid = crestAtU(0.5) + band.gap * (0.9 - 0.4 * floodT);
+        const g0 = crestMid * h;
+        const grad = ctx.createLinearGradient(0, g0 - h * 0.03, 0, g0 + h * 0.26);
+        grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
+        grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, ${band.alpha * floodT})`);
+        ctx.fillStyle = grad;
         ctx.fill();
       }
     }
 
-    // 3 — the dithered hash field. Presence per cell is a fixed threshold
+    // 3 — the crest beam. The reference leads its tide with a bright, narrow
+    // band of light riding the wave crest, visibly hotter than the fill
+    // behind it, and it's what makes the rise read as light breaking upward
+    // rather than a coloured region growing. Present from the charging phase
+    // onward, brightest just as the flood commits, then washing out as the
+    // colour catches up with it.
+    //
+    // Softened by stacking progressively wider, fainter strokes instead of
+    // relying on the CSS blur — the blur is off during charging so the hash
+    // field stays sharp, and a single stroke there would read as a hard line.
+    const beamA = floodT > 0 ? 0.3 * (1 - 0.6 * floodT) : 0.26 * Math.pow(this.charge, 1.8);
+    if (beamA > 0.012) {
+      const tracePath = () => {
+        ctx.beginPath();
+        for (let x = 0; x <= w; x += 6) {
+          const y = crestAtU(x / w) * h;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+      };
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      const base = Math.max(10, h * 0.05);
+      // Many passes on a smooth falloff, widest and faintest first. Four
+      // passes with large alpha steps produced visible concentric rings and
+      // read as a piped rope of light rather than a glow; the reference's
+      // beam has no locatable edge at all.
+      const PASSES = 10;
+      for (let i = PASSES - 1; i >= 0; i--) {
+        const f = i / (PASSES - 1); // 1 = widest halo, 0 = hot core
+        const widthMul = 0.5 + 5.5 * f * f;
+        const alphaMul = Math.pow(1 - f, 0.85) * 0.34 + 0.02;
+        tracePath();
+        ctx.strokeStyle = `rgba(255, 233, 178, ${(beamA * alphaMul).toFixed(4)})`;
+        ctx.lineWidth = base * widthMul;
+        ctx.stroke();
+      }
+    }
+
+    // 4 — the dithered hash field. Presence per cell is a fixed threshold
     // against local density, so the leading edge is a ragged dither that
     // thins to nothing — a mask fade dims all cells together, which is what
     // produced every hard seam this replaced.
