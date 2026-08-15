@@ -176,47 +176,22 @@
  *
  * `screen` blending makes overlaps brighten rather than muddy, so where the
  * fields cross you get light instead of paint. */
-/* Normal compositing, NOT screen.
+/* The wash surface is a canvas (see transitionWash.ts), blurred here rather
+ * than in the draw loop so the wave maths stays exact and cheap and the GPU
+ * does the diffusion.
  *
- * These were screen-blended, which is why the transition flashed white.
- * Screen is 1-(1-a)(1-b) per channel, so four warm layers at high alpha
- * compound to roughly (255, 251, 216) — the pale highlight in particular
- * dragged the blue channel up and the stack saturated out to white. That
- * isn't a glitch to tune around, it's what the blend mode does with this
- * many opaque light sources.
- *
- * Plain alpha compositing of warm hues can't exceed its own brightest
- * layer, so the result stays gold no matter how the fields overlap. The
- * luminous quality now comes from the colours and the blur, not from a
- * blend mode doing arithmetic we can't bound. */
-.washLayer {
+ * This replaced a stack of drifting radial gradients. Those could only ever
+ * approximate the reference's leading edge as overlapping blobs, which reads
+ * as drifting cloud rather than a rising tide with a travelling wave along
+ * its crest. They were also screen-blended, which compounded four warm
+ * layers to near-white and caused the flash. */
+.washCanvas {
   position: absolute;
-  inset: -30%;
-  filter: blur(64px);
-  will-change: transform;
-}
-/* Painted back to front: coral underneath, gold on top, so the stack reads
-   gold rather than whatever happens to be last. */
-.layerD {
-  background:
-    radial-gradient(70% 46% at 20% 100%, rgba(214, 96, 66, 0.62), rgba(0, 0, 0, 0) 72%),
-    radial-gradient(54% 36% at 84% 94%, rgba(206, 86, 88, 0.4), rgba(0, 0, 0, 0) 74%);
-  animation: gwDriftD 9.7s ease-in-out infinite alternate;
-}
-.layerB {
-  background: radial-gradient(54% 46% at 70% 86%, rgba(228, 132, 56, 0.6), rgba(0, 0, 0, 0) 72%);
-  animation: gwDriftB 8.3s ease-in-out infinite alternate;
-}
-.layerA {
-  background: radial-gradient(48% 42% at 32% 78%, rgba(250, 194, 56, 0.66), rgba(0, 0, 0, 0) 70%);
-  animation: gwDriftA 6.5s ease-in-out infinite alternate;
-}
-/* Warm highlight, deliberately not pale. A near-white here is exactly what
-   pushed the old stack to blow out; kept in amber it lifts the centre
-   without ever approaching white. */
-.layerC {
-  background: radial-gradient(50% 40% at 50% 96%, rgba(252, 214, 132, 0.42), rgba(0, 0, 0, 0) 68%);
-  animation: gwDriftC 5.4s ease-in-out infinite alternate;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: blur(26px);
+  will-change: opacity;
 }
 
 /* Enter: springs up past its resting point and settles back. The overshoot
