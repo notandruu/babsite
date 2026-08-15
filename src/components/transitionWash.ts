@@ -15,7 +15,26 @@ import styles from "./showcaseGateway.module.css";
  */
 
 const WASH_ID = "showcase-transition-wash";
-const LAYERS = [styles.layerA, styles.layerB, styles.layerC, styles.layerD];
+
+/** Set just before navigating so the showcase knows to play the exit half of
+ * the transition on arrival. Lives here rather than on the gateway component
+ * so the arrival side can read it without importing the whole About-page UI. */
+export const ARRIVAL_KEY = "showcase-arrival";
+
+/** True if this page load was reached through the gateway. Consumes the flag. */
+export function consumeArrivalFlag(): boolean {
+  try {
+    const arrived = sessionStorage.getItem(ARRIVAL_KEY) === "1";
+    if (arrived) sessionStorage.removeItem(ARRIVAL_KEY);
+    return arrived;
+  } catch {
+    return false;
+  }
+}
+// Back to front. Now that these composite normally rather than screen-
+// blending, DOM order is paint order and therefore determines the resulting
+// hue: coral underneath, gold above it, warm highlight last.
+const LAYERS = [styles.layerD, styles.layerB, styles.layerA, styles.layerC];
 
 function existing(): HTMLElement | null {
   return document.getElementById(WASH_ID);
@@ -63,7 +82,7 @@ export function dismissWash(): boolean {
   // swapping straight to the exit would snap it back to that animation's
   // start values for a frame and flash the page underneath.
   el.classList.remove(styles.washIn);
-  el.style.opacity = "0.95";
+  el.style.opacity = "0.88";
   el.style.transform = "translate3d(0,0,0) scale(1)";
 
   // One frame at rest, then hand over to the exit.

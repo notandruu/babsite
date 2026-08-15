@@ -5,6 +5,7 @@ import { Canvas } from "@react-three/fiber";
 import { ShowcaseScene } from "./ShowcaseScene";
 import { ShowcaseHud } from "./ShowcaseHud";
 import { ShowcaseHashBackground } from "./ShowcaseHashBackground";
+import { consumeArrivalFlag, dismissWash, removeStaleWash } from "@/components/transitionWash";
 import { ShowcaseStore, ShowcaseStoreContext } from "./useShowcaseStore";
 import { TIMELINE_STOPS } from "./data";
 
@@ -41,6 +42,36 @@ export function ShowcaseExperience() {
     // Backstop, in case a texture never resolves — show the scene anyway.
     const failsafe = setTimeout(() => setTimedOut(true), 3000);
     return () => clearTimeout(failsafe);
+  }, []);
+
+  // The gateway wash is still on screen at this point, covering the route
+  // change. It must not start clearing until the scene behind it is actually
+  // rendered — on a fixed timer it finished fading while this page was still
+  // mounting, which exposed roughly 350ms of empty dark page between the wash
+  // leaving and the cards arriving. Holding it until `ready` is what makes
+  // the handover seamless: the wash lifts to reveal a finished scene.
+  const arrivedRef = useRef(false);
+  const initedRef = useRef(false);
+
+  useEffect(() => {
+    // Consume the flag exactly once. Guarded by a ref rather than read during
+    // render, and idempotent so StrictMode's second mount pass doesn't see an
+    // already-cleared flag and mistake an arrival for a direct visit.
+    if (!initedRef.current) {
+      initedRef.current = true;
+      arrivedRef.current = consumeArrivalFlag();
+      if (!arrivedRef.current) removeStaleWash();
+    }
+    // The wash clears only once there's a finished scene behind it.
+    if (arrivedRef.current && ready) dismissWash();
+  }, [ready]);
+
+  useEffect(() => {
+    // If readiness never arrives, the wash still has to go.
+    const cap = setTimeout(() => {
+      if (arrivedRef.current) dismissWash();
+    }, 4000);
+    return () => clearTimeout(cap);
   }, []);
 
   const handleSceneReady = useCallback(() => setSceneReady(true), []);

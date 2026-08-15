@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./showcaseGateway.module.css";
-import { riseWash } from "./transitionWash";
+import { ARRIVAL_KEY, riseWash } from "./transitionWash";
 import { GatewayHashField } from "./GatewayHashField";
 
 const BLOCK_COUNT = 28;
@@ -12,11 +12,6 @@ const BLOCK_COUNT = 28;
 // shorter than the animation the navigation shows through mid-rise.
 const RISE_MS = 620;
 const HOLD_MS = 520;
-
-/** Set just before navigating so /showcase knows to play the exit half of
- * the transition on arrival. sessionStorage (not a query param) keeps the
- * URL clean and the flag dies with the tab. */
-export const ARRIVAL_KEY = "showcase-arrival";
 
 export function ShowcaseGateway() {
   const router = useRouter();
