@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { ShowcaseArrival } from "./ShowcaseArrival";
 
 /**
  * The finished backdrop, rendered as part of this route's server HTML so
@@ -26,6 +27,7 @@ export default function ShowcasePage() {
   return (
     <div className="fixed inset-0 overflow-hidden" style={{ background: BACKDROP }}>
       <ShowcaseExperience />
+      <ShowcaseArrival />
     </div>
   );
 }

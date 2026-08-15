@@ -1,0 +1,163 @@
+/*
+ * Scroll-to-enter gateway + the warm wash that carries you into /showcase.
+ *
+ * Timings and colors were measured off a 120fps screen recording of the
+ * reference rather than eyeballed:
+ *   rise    ~210ms   (first glow to full coverage)
+ *   hold    ~420ms   (full wash, navigation happens under it)
+ *   recede  ~330ms+  (diagonal clear toward bottom-left)
+ * The reference wash sampled #c75433 at the top through #ce683d to #e6a367
+ * at the bottom, i.e. brighter toward the edge the glow rises from. Those
+ * are terracotta; the values below keep that exact structure and luminance
+ * ramp but sit in this site's gold, so it reads as the same motion in our
+ * palette instead of importing another brand's color.
+ */
+
+/* Height is the scroll budget, not just whitespace: progress is measured
+   against this section's own height, so ~one viewport means the meter fills
+   over roughly one screen of scrolling. Packed tighter than that and it
+   snaps from empty to full in a flick of the wheel. */
+.gateway {
+  position: relative;
+  min-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 80px 24px;
+  overflow: hidden;
+}
+
+/* The ambient glow that builds under the terminal line as you scroll in,
+   so the wash feels like it was already gathering rather than switched on. */
+/* Anchored flush to the section's bottom edge, which is also the bottom of
+   the document — so the bright core of the gradient gathers right at the
+   bottom of the screen as you arrive, the way the reference does. Offsetting
+   it below the section instead pushed that core past the fold and left only
+   its faint tail visible. */
+.gatewayGlow {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 62%;
+  pointer-events: none;
+  opacity: var(--gw-glow, 0);
+  background:
+    radial-gradient(120% 62% at 32% 100%, rgba(254, 203, 51, 0.78), rgba(0, 0, 0, 0) 70%),
+    radial-gradient(140% 70% at 76% 100%, rgba(224, 182, 50, 0.66), rgba(0, 0, 0, 0) 72%);
+  filter: blur(42px);
+  transition: opacity 120ms linear;
+}
+
+.command {
+  position: relative;
+  font-family: var(--font-dm-mono), ui-monospace, "SF Mono", monospace;
+  font-size: clamp(15px, 2.4vw, 30px);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.92);
+}
+.prompt {
+  color: rgba(255, 255, 255, 0.32);
+}
+.caret {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.05em;
+  margin-left: 0.12em;
+  vertical-align: -0.16em;
+  background: var(--color-gold, #fecb33);
+  animation: gwBlink 1s steps(1) infinite;
+}
+
+/* Segmented, not a smooth fill — the reference bar is discrete blocks, which
+   is what makes it read as a terminal progress meter rather than a browser
+   loading bar. */
+.meter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-dm-mono), ui-monospace, "SF Mono", monospace;
+  font-size: 11px;
+}
+.blocks {
+  display: flex;
+  gap: 2px;
+}
+.block {
+  width: 9px;
+  height: 13px;
+  background: rgba(255, 255, 255, 0.09);
+}
+.blockOn {
+  background: var(--color-gold, #fecb33);
+}
+.meterLabel {
+  color: var(--color-gold, #fecb33);
+  opacity: 0.85;
+}
+
+/* Full-viewport wash. Two offset ellipses rather than one, because the
+   reference's leading edge undulates across the width instead of rising as
+   a flat line; overlapping them at different heights produces that wave for
+   free, and the blur keeps it diffuse. */
+.wash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  will-change: transform, opacity;
+  background:
+    radial-gradient(120% 58% at 28% 104%, #f4dc98, rgba(0, 0, 0, 0) 72%),
+    radial-gradient(135% 66% at 74% 108%, #f0c94a, rgba(0, 0, 0, 0) 74%),
+    linear-gradient(to top, #e0b632 0%, #d8a93a 42%, rgba(0, 0, 0, 0) 78%);
+  filter: blur(26px);
+}
+
+/* Rise: enters from below, overshoots slightly past full so the leading
+   wave clears the top edge instead of parking mid-screen. */
+.washRise {
+  animation: gwRise 210ms cubic-bezier(0.32, 0, 0.24, 1) forwards;
+}
+/* Recede: diagonal clear toward the bottom-left, matching the reference's
+   exit rather than simply reversing the entrance. */
+.washRecede {
+  animation: gwRecede 520ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes gwRise {
+  from {
+    transform: translate3d(0, 100%, 0) scale(1.1);
+    opacity: 0.5;
+  }
+  to {
+    transform: translate3d(0, -6%, 0) scale(1.1);
+    opacity: 1;
+  }
+}
+@keyframes gwRecede {
+  from {
+    transform: translate3d(0, -6%, 0) scale(1.1);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(-46%, 78%, 0) scale(1.35);
+    opacity: 0;
+  }
+}
+@keyframes gwBlink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .washRise,
+  .washRecede {
+    animation-duration: 1ms;
+  }
+  .caret {
+    animation: none;
+  }
+}
