@@ -76,8 +76,8 @@
   gap: 18px;
   max-width: 640px;
   padding: 14px 18px;
-  border: 1px solid rgba(232, 114, 42, 0.35);
-  background: rgba(232, 114, 42, 0.1);
+  border: 1px solid rgba(246, 215, 102, 0.4);
+  background: rgba(246, 215, 102, 0.09);
   border-radius: 10px;
 }
 
@@ -103,7 +103,7 @@
   padding: 9px 16px;
   border: 0;
   border-radius: 999px;
-  background: rgb(232, 114, 42);
+  background: rgb(246, 215, 102);
   color: rgb(23, 23, 23);
   font-size: 13px;
   font-weight: 600;
@@ -111,7 +111,7 @@
   transition: transform 160ms ease, background 160ms ease;
 }
 .cta:hover {
-  background: rgb(244, 138, 66);
+  background: rgb(250, 228, 140);
   transform: translateY(-1px);
 }
 
@@ -150,7 +150,7 @@
   transition: color 160ms ease;
 }
 .back:hover {
-  color: rgb(232, 114, 42);
+  color: rgb(246, 215, 102);
 }
 
 .brandName {

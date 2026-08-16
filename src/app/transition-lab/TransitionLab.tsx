@@ -38,14 +38,22 @@ const SWEEP_MS = 420; // crest entering one edge to exiting the other
 const DIM_MS = 380; // full cover to warm near-black
 const RELEASE_MS = 260; // near-black veil fading off the landing
 
-// Sampled straight off the recording. The wave is a horizontal brightness
-// profile around the crest: a wide amber shoulder ahead of it, a gold core,
-// and a trail that collapses to near-opaque red-brown within about 18% of
-// the screen width, with a faint echo hump trailing the crest.
-const CREST: readonly [number, number, number] = [196, 130, 58];
-const LEAD: readonly [number, number, number] = [150, 92, 40];
-const TRAIL_RED: readonly [number, number, number] = [92, 46, 24];
-const DEEP_TRAIL: readonly [number, number, number] = [56, 31, 21];
+// The wave's *structure* is sampled from the recording (a wide shoulder
+// ahead of the crest, a hot core, and a trail collapsing to near-opaque
+// within about 18% of the screen width, with a faint echo hump behind it).
+// The *hues* are ours: the reference runs rusty orange, around 20-31 degrees,
+// which is where the burnt look came from. Every stop below sits in the
+// 40-48 degree yellow-gold band instead, the same band as the card gradient
+// in showcase/theme.ts (#fdf6dc, #f6d766, #e0b632).
+// These are the gradient's own stops, in order, rather than an approximation
+// of them: pale core, mid gold shoulder, deep gold trail, plus one darker
+// extension of the same hue for the far trail. Keeping the trail bright is
+// the point. Dropping it to a dark value pulls the whole covered screen to
+// olive, which is what the first pass at this did.
+const CREST: readonly [number, number, number] = [253, 246, 220]; // #fdf6dc
+const LEAD: readonly [number, number, number] = [246, 215, 102]; // #f6d766
+const TRAIL_RED: readonly [number, number, number] = [224, 182, 50]; // #e0b632
+const DEEP_TRAIL: readonly [number, number, number] = [176, 138, 34];
 const SETTLE: readonly [number, number, number] = [23, 23, 23]; // landing bg
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
