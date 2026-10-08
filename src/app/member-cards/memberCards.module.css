@@ -1,0 +1,267 @@
+/*
+ * Member cards: a light, warm counterpart to the showcase timeline.
+ *
+ * The timeline is an archive and lives on near-black. This is the opposite
+ * register — people, now — so it sits on the club's gold as a field rather
+ * than as an accent, and the card is a physical object floating on it.
+ * Deliberately NOT a re-skin of the timeline: the two are meant to read as
+ * different worlds, with the gateway flood (which is this same gold) as the
+ * hinge between them.
+ */
+
+.stage {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 34px;
+  padding: 72px 24px;
+  /* Sampled off the reference: pale yellow-green high left, saturated
+     yellow through the middle, deep amber falling to the lower right. */
+  background:
+    radial-gradient(115% 95% at 18% 12%, #f2e79a 0%, rgba(0, 0, 0, 0) 55%),
+    radial-gradient(105% 85% at 88% 82%, #c8912a 0%, rgba(0, 0, 0, 0) 62%),
+    linear-gradient(142deg, #ebdc64 0%, #e3c445 46%, #d2a231 100%);
+  --card-w: min(560px, 86vw);
+}
+
+/* Fine grain over the gradient. Without it the background reads as flat
+   CSS; the reference has a definite paper tooth to it. */
+.grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+
+.viewport {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  /* Sized to the card rather than guessed, so the caption and dots sit
+     just under it instead of after a gap of dead gradient. */
+  height: 250px;
+}
+
+.card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--card-w);
+  box-sizing: border-box;
+  padding: 26px 28px 24px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow:
+    0 28px 60px rgba(96, 62, 8, 0.22),
+    0 3px 10px rgba(96, 62, 8, 0.1);
+  transition:
+    transform 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 420ms ease,
+    filter 420ms ease;
+  font-family: var(--font-instrument-sans), system-ui, sans-serif;
+  color: #14110c;
+}
+.cardIdle {
+  opacity: 0.45;
+  filter: saturate(0.7);
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.avatarWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.92);
+  /* Placeholder until real headshots exist; swap for an <img>. */
+  background: linear-gradient(145deg, #6b5a34, #2c2419);
+}
+.badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2.5px solid #fff;
+  background: var(--color-gold, #fecb33);
+}
+
+.name {
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+.role {
+  margin-top: 3px;
+  font-size: 13px;
+  color: rgba(20, 17, 12, 0.5);
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px 24px;
+  margin-top: 22px;
+}
+.metaLabel {
+  font-family: var(--font-dm-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(20, 17, 12, 0.42);
+}
+.metaValue {
+  margin-top: 6px;
+  padding-bottom: 8px;
+  font-size: 16px;
+  border-bottom: 1px solid rgba(20, 17, 12, 0.14);
+}
+
+.doodleCell {
+  min-width: 132px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.doodleRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 2px;
+}
+.doodle {
+  width: 62px;
+  height: 42px;
+  overflow: visible;
+}
+.doodleStroke {
+  fill: none;
+  stroke: #14110c;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.play {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 2px 3px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-dm-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: rgba(20, 17, 12, 0.4);
+  transition: color 160ms ease;
+}
+.play:hover {
+  color: #14110c;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 22px;
+}
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 12px 14px;
+  border: 1px solid rgba(20, 17, 12, 0.16);
+  border-radius: 11px;
+  background: #fff;
+  color: #14110c;
+  font-size: 14px;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+.action:hover {
+  border-color: rgba(20, 17, 12, 0.4);
+  background: #fbf8f1;
+  transform: translateY(-1px);
+}
+
+.caption {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-dm-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(58, 38, 6, 0.55);
+}
+
+.dots {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 9px;
+}
+.dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  background: rgba(58, 38, 6, 0.28);
+  transition: background 200ms ease, transform 200ms ease;
+}
+.dotOn {
+  background: #3a2606;
+  transform: scale(1.35);
+}
+
+.hint {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-dm-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: rgba(58, 38, 6, 0.4);
+}
+
+@media (max-width: 560px) {
+  .viewport {
+    height: 320px;
+  }
+  .actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}
